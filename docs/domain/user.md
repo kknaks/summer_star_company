@@ -28,7 +28,7 @@
 - **토큰 TTL**: 30일 (만료 시 재로그인)
 - **JWT 시크릿**: 백엔드 환경변수 `JWT_SECRET` (HS256)
 - **stateless** — DB에 sessions 테이블 없음. 강제 로그아웃은 시크릿 로테이션으로 일괄 처리
-- **비밀번호 해싱**: `passlib[bcrypt]`
+- **비밀번호 해싱**: `bcrypt` (직접 사용 — passlib는 bcrypt 4.x 호환 이슈로 회피)
 - **Pi 에이전트 → 백엔드**: 정적 API 키 헤더 (`X-Agent-Key: ...`) — JWT 아님
 - 일반 직원은 로그인 안 함 — 카드만 찍음 (role 추가되면 그때 재검토)
 

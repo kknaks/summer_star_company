@@ -13,7 +13,7 @@ FastAPI 기반. 집 서버에서 동작. SSOT는 다음 영역:
 - **FastAPI** + Uvicorn
 - **SQLAlchemy 2.x async** + `asyncpg` ([[database]])
 - **Alembic** 마이그레이션
-- **passlib[bcrypt]** 비밀번호 해싱
+- **bcrypt** 비밀번호 해싱 (passlib 미사용 — 4.x 호환 이슈)
 - **PyJWT** (HS256)
 - **pyscard** 등록 리더(#2) 직접 제어
 - **Pydantic v2** 요청/응답 스키마

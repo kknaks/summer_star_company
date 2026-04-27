@@ -14,25 +14,25 @@
 
 - [x] 루트 `.gitignore` (Python/Node/OS/Editor/`.env*` 등)
 - [x] 루트 `.env.example` ([[../architecture/security#시크릿-인벤토리]] 따름)
-- [x] `docker-compose.yml` — Postgres 17-alpine, 호스트 포트 **5440** (5432/5433은 다른 컨테이너가 점유)
+- [x] `docker-compose.yml` — Postgres 17-alpine. 호스트 포트는 [[../conventions/common#포트-컨벤션]] 따름
 - [x] `backend/`, `agent/`, `admin/` 폴더 + `.gitkeep`
 
 **Deliverable:** `docker compose up -d` → Postgres 17.9 healthy 확인 (2026-04-27).
 
 ---
 
-## Phase 1 — 백엔드 스켈레톤 + 스키마
+## Phase 1 — 백엔드 스켈레톤 + 스키마 ✅
 **Goal:** FastAPI 앱이 뜨고, 마이그레이션이 적용되고, `/health`가 200
 
-- [ ] `backend/` Python 프로젝트 셋업, 의존성 설치 ([[../spec/backend-api#기술-스택]] 참고)
-- [ ] `app/core/config.py` — env 로드
-- [ ] `app/db/base.py`, `app/db/models.py` — SQLAlchemy 모델 ([[../spec/database]])
-- [ ] Alembic 초기화 + 첫 마이그레이션 ([[../spec/database#스키마]])
-- [ ] `app/main.py` — FastAPI 앱, startup에서 마이그레이션 실행 ([[../spec/backend-api#마이그레이션-운영]])
-- [ ] `GET /health` 엔드포인트
-- [ ] `scripts/create_admin.py` ([[../spec/database#시드-데이터]])
+- [x] `backend/` Python 프로젝트 셋업 (uv), 의존성 설치
+- [x] `app/core/config.py` — env 로드 (root `.env` 참조)
+- [x] `app/db/base.py`, `app/db/models.py` — SQLAlchemy 모델
+- [x] Alembic 초기화 + 첫 마이그레이션 (3 테이블 + enum + `updated_at` 트리거)
+- [x] `app/main.py` — lifespan에서 `asyncio.to_thread(run_migrations)` (alembic의 자체 asyncio.run 충돌 회피)
+- [x] `GET /health` 엔드포인트
+- [x] `scripts/create_admin.py` — bcrypt 직접 사용 (passlib 미사용, 4.x 호환 이슈)
 
-**Deliverable:** `uvicorn app.main:app` → `curl localhost:8000/health` 200, DB에 admin 1명.
+**Deliverable:** `uvicorn app.main:app --port 48000` → `curl /health` 200, admin 1명 시드 확인 (2026-04-27).
 
 ---
 
