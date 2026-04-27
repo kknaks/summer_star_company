@@ -13,6 +13,8 @@ from alembic import command
 from app.api import access as access_api
 from app.api import auth as auth_api
 from app.api import cards as cards_api
+from app.api import logs as logs_api
+from app.api import stats as stats_api
 from app.api import users as users_api
 from app.core.config import settings
 
@@ -52,6 +54,8 @@ app.include_router(auth_api.router)
 app.include_router(users_api.router)
 app.include_router(cards_api.router)
 app.include_router(access_api.router)
+app.include_router(logs_api.router)
+app.include_router(stats_api.router)
 
 
 @app.get("/health")

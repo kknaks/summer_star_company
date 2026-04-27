@@ -116,13 +116,22 @@
 
 ---
 
-## Phase 7 — Logs / Stats API
+## Phase 7 — Logs / Stats API ✅
 **Goal:** 관리자 웹에서 보여줄 데이터 다 준비됨
 
-- [ ] `GET /api/logs` ([[../spec/backend-api#logs]])
-- [ ] `GET /api/stats/daily`, `GET /api/stats/monthly` ([[../spec/backend-api#stats]], 해석 규칙은 [[../domain/access-log#출퇴근-해석]])
+- [x] `dtos/access.py` — cursor 인코드/디코드 (base64 JSON)
+- [x] `repos/access_log_repo.list_paginated` — `(occurred_at, id) DESC` 튜플 비교
+- [x] `repos/access_log_repo.daily_stats` / `monthly_stats` — KST 04:00 컷오프 raw SQL
+- [x] `services/log_service`, `services/stats_service` — 시간 변환 + 포맷 (HH:MM)
+- [x] `schemas/logs`, `schemas/stats` — 응답 모델
+- [x] `GET /api/logs` (filter + cursor pagination)
+- [x] `GET /api/stats/daily?user_id=&year=&month=`
+- [x] `GET /api/stats/monthly?user_id=&year=`
 
-**Deliverable:** API로 로그 조회 + 일/월별 출퇴근 통계 반환.
+**Deliverable:** 검증 완료
+- /api/logs: 580건 중 limit=3 → next_cursor 정상 반환, allowed=true 필터 동작
+- /api/stats/daily 2026-04: 1 day, 10:01-18:01 (480분, KST 변환 정상)
+- /api/stats/monthly 2026: 04월 work_days=1, avg 10:01/18:02
 
 ---
 
