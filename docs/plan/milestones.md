@@ -9,15 +9,15 @@
 
 ---
 
-## Phase 0 — 환경 부트스트랩
+## Phase 0 — 환경 부트스트랩 ✅
 **Goal:** 빈 monorepo에 3개 컴포넌트 폴더 + 공통 설정
 
-- [ ] 루트 `.gitignore` (`.env`, `__pycache__`, `node_modules`, `.next`, `.venv` 등)
-- [ ] 루트 `.env.example` ([[../architecture/security#시크릿-인벤토리]] 참고)
-- [ ] `docker-compose.yml` — Postgres 17 컨테이너
-- [ ] `backend/`, `agent/`, `admin/` 폴더 생성
+- [x] 루트 `.gitignore` (Python/Node/OS/Editor/`.env*` 등)
+- [x] 루트 `.env.example` ([[../architecture/security#시크릿-인벤토리]] 따름)
+- [x] `docker-compose.yml` — Postgres 17-alpine, 호스트 포트 **5440** (5432/5433은 다른 컨테이너가 점유)
+- [x] `backend/`, `agent/`, `admin/` 폴더 + `.gitkeep`
 
-**Deliverable:** `docker compose up -d` 로 로컬 Postgres 뜸.
+**Deliverable:** `docker compose up -d` → Postgres 17.9 healthy 확인 (2026-04-27).
 
 ---
 
