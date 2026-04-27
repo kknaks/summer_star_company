@@ -67,16 +67,14 @@
 
 ---
 
-## Phase 4 — 등록 리더(#2) 연동 🟡
+## Phase 4 — 등록 리더(#2) 연동 ✅
 **Goal:** `POST /api/cards/scan`이 실제로 카드 읽음
 
 - [x] `app/services/card_reader.py` — pyscard `CardRequest` 래퍼, `asyncio.to_thread`로 블로킹 격리
-- [x] `app/core/exceptions`에 `ReaderUnavailableError`, `CardScanTimeoutError` 추가
-- [x] `POST /api/cards/scan` (JWT 보호, 408 timeout / 503 reader unavailable)
-- [x] 401 / 503 케이스 통합 테스트 통과 (리더 미연결)
-- [ ] **실제 카드 태그 → UID 반환 검증** (리더 재연결 시점에 수행)
-
-**Deliverable (부분):** 인증/리더 미연결 경로 검증됨. 정상 경로는 하드웨어 재연결 후.
+- [x] `app/core/exceptions`에 `ReaderUnavailableError`, `CardScanTimeoutError`
+- [x] `POST /api/cards/scan` (JWT 보호, 408/503)
+- [x] 부저 끄기 APDU(`FF 00 52 00 00`) 추가 — 사무실에서 조용히 테스트
+- [x] 401, 503 (리더 미연결), 408 (timeout), 200 (실제 카드 → UID `9E4BC303`) 전 케이스 검증
 
 ---
 
@@ -99,17 +97,22 @@
 
 ---
 
-## Phase 6 — NFC 에이전트
+## Phase 6 — NFC 에이전트 ✅ (풀 사이클 완성)
 **Goal:** 카드 태그하면 백엔드로 push 가는 단순 데몬
 
-- [ ] `agent/` Python 프로젝트
-- [ ] `nfc_agent/reader.py` — 출입용 리더 감시 (CardRequest 블로킹)
-- [ ] `nfc_agent/client.py` — httpx로 `POST /api/access`
-- [ ] `nfc_agent/feedback.py` — ACR122U PSEUDO-APDU 비프/LED
-- [ ] `nfc_agent/main.py` — 메인 루프 ([[../spec/nfc-agent#메인-루프-의사-코드]])
-- [ ] **macOS에서 직접 실행 + 백엔드 호출 확인** (Pi 가기 전에 다 검증)
+- [x] `agent/` Python 프로젝트 (uv, pyproject.toml)
+- [x] `nfc_agent/config.py` — root `.env` 공유
+- [x] `nfc_agent/reader.py` — pyscard `CardRequest(newcardonly=True)`, 모듈 레벨 디바운스, 부저 끄기 APDU
+- [x] `nfc_agent/client.py` — httpx `POST /api/access`, BackendError 정의
+- [x] `nfc_agent/feedback.py` — 결과 로그 (GPIO LED는 추후)
+- [x] `nfc_agent/main.py` + `__main__.py` — `python -m nfc_agent` 진입점
+- [x] `systemd/nfc-agent.service` — Pi 배포 대비 유닛 파일
 
-**Deliverable:** 로컬에서 `python -m nfc_agent` → 카드 찍으면 백엔드에 로그 쌓임 + 비프음.
+**Deliverable:** macOS에서 풀 사이클 검증 완료
+- 카드 6번 태그 → access_logs 6 row, 각각 단일 처리 (디바운스 동작)
+- UID `9E4BC303` (실제 카드) → allowed:true (등록된 카드)
+- 부저 음소거 (첫 카드 외 무음)
+- 리더 미연결 시 ReaderError로 깨끗하게 종료
 
 ---
 

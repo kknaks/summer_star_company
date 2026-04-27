@@ -1,0 +1,18 @@
+[Unit]
+Description=NFC Access Agent
+After=network-online.target pcscd.service
+Wants=network-online.target pcscd.service
+
+[Service]
+Type=simple
+User=nfc
+WorkingDirectory=/opt/nfc-agent
+EnvironmentFile=/etc/nfc-agent.env
+ExecStart=/opt/nfc-agent/.venv/bin/python -m nfc_agent
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
