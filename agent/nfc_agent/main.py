@@ -5,15 +5,22 @@
 """
 
 import logging
+import signal
 import sys
 from datetime import UTC, datetime
 
+from nfc_agent import reader as reader_mod
 from nfc_agent.client import BackendClient, BackendError
 from nfc_agent.config import settings
 from nfc_agent.feedback import signal_result
-from nfc_agent.reader import ReaderError, wait_for_card
+from nfc_agent.reader import AgentStoppedError, ReaderError, wait_for_card
 
 logger = logging.getLogger("nfc_agent")
+
+
+def _on_signal(signum: int, _frame) -> None:  # noqa: ANN001
+    logger.info("종료 신호 수신 (signum=%s) — 즉시 종료 절차 시작", signum)
+    reader_mod.request_stop()
 
 
 def main() -> int:
@@ -21,6 +28,8 @@ def main() -> int:
         level=settings.LOG_LEVEL,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    signal.signal(signal.SIGINT, _on_signal)
+    signal.signal(signal.SIGTERM, _on_signal)
     logger.info(
         "NFC agent 시작 — base=%s reader=%s",
         settings.API_BASE_URL,
@@ -37,6 +46,9 @@ def main() -> int:
         while True:
             try:
                 uid = wait_for_card()
+            except AgentStoppedError:
+                logger.info("정상 종료")
+                return 0
             except ReaderError as e:
                 logger.error("리더 에러: %s", e)
                 return 1

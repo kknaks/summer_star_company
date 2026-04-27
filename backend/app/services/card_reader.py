@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 # ACR122U PSEUDO-APDU: GET DATA — UID 조회 (ISO14443-3 type A/B 공통)
 _GET_UID_APDU = [0xFF, 0xCA, 0x00, 0x00, 0x00]
-# ACR122U 부저 끄기 (P2=00, 카드 감지 시 비프 음소거)
-_DISABLE_BUZZER_APDU = [0xFF, 0x00, 0x52, 0x00, 0x00]
+# one-shot 비프: 카드 읽기 성공 시 능동 트리거
+_BEEP_APDU = [0xFF, 0x00, 0x40, 0x00, 0x04, 0x01, 0x00, 0x01, 0x01]
 
 
 def _find_reader(name_filter: str):
@@ -57,14 +57,14 @@ def _read_uid_blocking(timeout_sec: int) -> str:
 
     try:
         card_service.connection.connect()
-        # 부저 끄기 — 실패해도 본 흐름은 계속
-        try:
-            card_service.connection.transmit(_DISABLE_BUZZER_APDU)
-        except Exception:
-            logger.debug("부저 끄기 APDU 실패 (무시)")
         response, sw1, sw2 = card_service.connection.transmit(_GET_UID_APDU)
         if sw1 != 0x90 or sw2 != 0x00:
             raise ReaderUnavailableError(f"GET_UID APDU 응답 비정상: SW={sw1:02X}{sw2:02X}")
+        # 비프음 (실패해도 본 흐름은 계속)
+        try:
+            card_service.connection.transmit(_BEEP_APDU)
+        except Exception:
+            logger.debug("비프 APDU 실패 (무시)")
         return normalize_uid(bytes(response).hex())
     except (CardConnectionException, NoCardException) as e:
         raise ReaderUnavailableError(f"카드 통신 실패: {e}") from e

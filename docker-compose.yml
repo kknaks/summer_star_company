@@ -17,5 +17,33 @@ services:
       retries: 5
     restart: unless-stopped
 
+  backend:
+    build: ./backend
+    container_name: summer_star_backend
+    environment:
+      # 컨테이너 내부 → postgres 서비스명으로 접근 (포트는 내부 5432)
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-summer_star_company}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-not-for-prod}
+      AGENT_API_KEY: ${AGENT_API_KEY:-changeme-please-generate-32-bytes}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:43000}
+      READER_NAME: ${READER_NAME:-ACR122U}
+      READER_TIMEOUT_SEC: ${READER_TIMEOUT_SEC:-30}
+    ports:
+      - "48000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    # 등록 리더(#2)는 USB가 호스트에 꽂혀있어야 함 — 운영(Linux 집서버)에서만 활성화:
+    # devices:
+    #   - "/dev/bus/usb:/dev/bus/usb"
+    # macOS dev: USB 무관 엔드포인트만 동작 (`/scan` 503).
+    # 카드 등록 시엔 host의 `scripts/dev-backend-host.sh`로 실행하거나,
+    # admin에서 UID 직접 입력으로 우회.
+
+# admin / agent는 docker 안 올림:
+#  - admin: `scripts/dev-admin.sh` — Next.js dev 서버 (port 43000)
+#  - agent: `scripts/dev-agent.sh` — 카드 리더 USB 직접 접근
+
 volumes:
   postgres_data:

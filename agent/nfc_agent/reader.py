@@ -4,7 +4,9 @@ UID 정규화 정책: docs/domain/card.md (대문자 hex, 구분자 제거).
 backend의 normalize_uid와 의도적 중복 — repo-layout.md 참고.
 """
 
+import contextlib
 import logging
+import threading
 import time
 
 from smartcard.CardRequest import CardRequest
@@ -25,14 +27,28 @@ class ReaderError(Exception):
     pass
 
 
+class AgentStoppedError(Exception):
+    """SIGINT/SIGTERM 등 종료 요청에 의해 wait_for_card가 중단됨."""
+
+
 # ACR122U PSEUDO-APDU: GET DATA — UID 조회
 _GET_UID_APDU = [0xFF, 0xCA, 0x00, 0x00, 0x00]
-# ACR122U 카드 감지 시 부저 끄기 (P2=00)
-_DISABLE_BUZZER_APDU = [0xFF, 0x00, 0x52, 0x00, 0x00]
-# 60초 단위로 재대기 — SIGINT 등 시그널 처리 지연 최소화
-_POLL_TIMEOUT_SEC = 60
-# 같은 UID 디바운스 윈도우 — 카드를 리더 위에 계속 올려둔 상태에서 폭주 방지
-_DEBOUNCE_SEC = 1.5
+# ACR122U one-shot 비프: LED 변경 없음(LL=00), T1=100ms, 1회, 부저 ON.
+# 펌웨어 영구설정(FF 00 52)이 disable로 박혀도 능동 트리거라 항상 소리 남.
+_BEEP_APDU = [0xFF, 0x00, 0x40, 0x00, 0x04, 0x01, 0x00, 0x01, 0x01]
+# 1초 단위로 깨어나 stop 플래그 체크 — Ctrl+C 빠르게 반응
+_POLL_TIMEOUT_SEC = 1
+
+# 외부(메인 시그널 핸들러)에서 set → wait_for_card가 다음 폴링 사이클에서 AgentStopped raise
+_stop_event = threading.Event()
+
+
+def request_stop() -> None:
+    _stop_event.set()
+
+
+def reset_stop() -> None:
+    _stop_event.clear()
 
 
 def _find_reader():
@@ -58,22 +74,37 @@ def _normalize_uid(raw: str) -> str:
     return cleaned
 
 
-# 모듈 레벨 디바운스 상태 — 카드 한번 처리 후 같은 UID 즉시 재처리 방지.
-# 함수 로컬로 두면 매 wait_for_card 호출마다 리셋되어 의미 없음.
-_last_uid: str | None = None
-_last_time: float = 0.0
+def _wait_for_removal(target_reader) -> None:
+    """카드가 물리적으로 제거될 때까지 짧은 폴링으로 대기.
+
+    같은 카드를 리더 위에 계속 올려둔 상태에서 재발사 폭주 방지.
+    stop 요청 시 즉시 종료.
+    """
+    while not _stop_event.is_set():
+        try:
+            cr = CardRequest(
+                readers=[target_reader],
+                timeout=0.3,
+                cardType=AnyCardType(),
+            ).waitforcard()
+            with contextlib.suppress(Exception):
+                cr.connection.disconnect()
+            time.sleep(0.2)  # 여전히 있음 — 잠깐 쉬고 다시 체크
+        except CardRequestTimeoutException:
+            return  # 카드 없음 → 제거 확인
 
 
 def wait_for_card() -> str:
     """카드 한 장 대기 후 UID(정규화) 반환.
 
-    `newcardonly=True` — 카드가 새로 인서트된 이벤트만 트리거.
-    추가로 같은 UID 디바운스 윈도우(_DEBOUNCE_SEC)로 안전장치.
+    처리 후 카드 제거까지 블로킹 — 같은 카드 연속 재발사 방지.
+    request_stop()이 호출되면 AgentStopped 예외 raise.
     """
-    global _last_uid, _last_time
     target_reader = _find_reader()
 
     while True:
+        if _stop_event.is_set():
+            raise AgentStoppedError()
         try:
             card_service = CardRequest(
                 readers=[target_reader],
@@ -88,15 +119,15 @@ def wait_for_card() -> str:
 
         try:
             card_service.connection.connect()
-            # 부저 끄기 — 실패해도 본 흐름은 계속
-            try:
-                card_service.connection.transmit(_DISABLE_BUZZER_APDU)
-            except Exception:
-                logger.debug("부저 끄기 APDU 실패 (무시)")
             response, sw1, sw2 = card_service.connection.transmit(_GET_UID_APDU)
             if sw1 != 0x90 or sw2 != 0x00:
                 raise ReaderError(f"GET_UID APDU 비정상 SW={sw1:02X}{sw2:02X}")
             uid = _normalize_uid(bytes(response).hex())
+            # 비프음 (실패해도 본 흐름은 계속)
+            try:
+                card_service.connection.transmit(_BEEP_APDU)
+            except Exception:
+                logger.debug("비프 APDU 실패 (무시)")
         except (CardConnectionException, NoCardException):
             time.sleep(0.3)
             continue
@@ -106,10 +137,6 @@ def wait_for_card() -> str:
             except Exception:
                 logger.exception("리더 disconnect 실패")
 
-        now = time.monotonic()
-        if uid == _last_uid and (now - _last_time) < _DEBOUNCE_SEC:
-            time.sleep(0.3)
-            continue
-        _last_uid = uid
-        _last_time = now
+        # 다음 read 전에 물리적 제거 확인
+        _wait_for_removal(target_reader)
         return uid
