@@ -80,14 +80,22 @@
 
 ---
 
-## Phase 5 — 출입 엔드포인트
+## Phase 5 — 출입 엔드포인트 ✅ (MVP 기준선)
 **Goal:** Pi 에이전트가 보낼 인터페이스 완성
 
-- [ ] `POST /api/access` (X-Agent-Key 인증, [[../spec/backend-api#access]])
-- [ ] `access_logs` insert (allowed/denied 모두)
-- [ ] cards/users 조회로 allowed 판정
+- [x] `schemas/access.py` — AccessRequest / AccessResponse
+- [x] `repos/card_repo.find_active_by_uid` (UID로 활성 카드 조회)
+- [x] `repos/access_log_repo.add` (성공/거부 모두 INSERT)
+- [x] `services/access_service.record_access` — 정규화 → 카드 → 사용자 → 판정 → 로그
+- [x] `POST /api/access` (X-Agent-Key 인증)
 
-**Deliverable:** `curl -X POST -H "X-Agent-Key: ..." .../access` → DB에 로그 + allowed 응답.
+**Deliverable:** 7 케이스 + DB 검증 통과
+- 401 (키 없음/잘못됨), 422 (hex 아님)
+- 미등록 UID → allowed:false (card_id/user_id NULL)
+- 비활성 사용자 → allowed:false (card_id/user_id 채워짐)
+- 활성 → allowed:true
+- UID 다른 포맷(`59:fa:c3:03`)도 같은 카드로 인식 (정규화 동작)
+- KST→UTC 변환 정상
 
 ---
 

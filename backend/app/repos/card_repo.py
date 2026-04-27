@@ -12,6 +12,11 @@ async def get_by_id(session: AsyncSession, card_id: UUID) -> Card | None:
     return await session.get(Card, card_id)
 
 
+async def find_active_by_uid(session: AsyncSession, uid: str) -> Card | None:
+    """UID(정규화된)로 활성 카드 1장 조회. 출입 판정용."""
+    return await session.scalar(select(Card).where(Card.uid == uid, Card.active.is_(True)))
+
+
 async def list_all(session: AsyncSession, user_id: UUID | None = None) -> list[Card]:
     stmt = select(Card)
     if user_id is not None:
