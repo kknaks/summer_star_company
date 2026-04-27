@@ -50,14 +50,20 @@
 
 ---
 
-## Phase 3 — 사용자 / 카드 CRUD (스캔 제외)
+## Phase 3 — 사용자 / 카드 CRUD (스캔 제외) ✅
 **Goal:** 카드 등록만 빼고 나머지 데이터 조작 다 됨
 
-- [ ] `GET/POST/PATCH /api/users` ([[../spec/backend-api#users]])
-- [ ] `GET/POST/PATCH /api/cards` (UID 정규화 헬퍼 포함, `cards/scan` 제외)
-- [ ] UID UNIQUE 충돌 시 409 응답
+- [x] `core/uid.py` — UID 정규화 헬퍼 + `InvalidUidError`
+- [x] `core/exceptions.py` — 도메인 예외 (UserNotFound/CardNotFound/CardUidConflict)
+- [x] `dtos/users.py` — `UserListItem` (User + card_count + last_access_at)
+- [x] `repos/user_repo.py` — list_with_aggregates JOIN 쿼리, add, update
+- [x] `repos/card_repo.py` — list_all, add, update
+- [x] `services/user_service.py`, `services/card_service.py`
+- [x] `schemas/users.py`, `schemas/cards.py`
+- [x] `GET/POST/PATCH /api/users`, `GET/POST/PATCH /api/cards`
+- [x] UID UNIQUE 충돌 시 409, hex 아님 시 422, 존재하지 않는 user_id 404
 
-**Deliverable:** API로 사용자 추가, UID 직접 입력해서 카드 등록 가능.
+**Deliverable:** 9 케이스 통합 통과. UID `"59:fa:c3:03"` → `"59FAC303"` 정규화 동작.
 
 ---
 

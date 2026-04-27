@@ -11,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from alembic import command
 from app.api import auth as auth_api
+from app.api import cards as cards_api
+from app.api import users as users_api
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,8 @@ app.add_middleware(
 
 
 app.include_router(auth_api.router)
+app.include_router(users_api.router)
+app.include_router(cards_api.router)
 
 
 @app.get("/health")
