@@ -14,15 +14,11 @@ from pathlib import Path
 # scripts/는 backend/ 패키지 외부라 sys.path에 backend/ 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import bcrypt  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
+from app.core.security import hash_password  # noqa: E402
 from app.db.base import SessionLocal  # noqa: E402
 from app.db.models import User, UserRole  # noqa: E402
-
-
-def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 async def create_admin(name: str, password: str) -> int:

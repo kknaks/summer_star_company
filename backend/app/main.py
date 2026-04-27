@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from alembic import command
+from app.api import auth as auth_api
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,9 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=False,
 )
+
+
+app.include_router(auth_api.router)
 
 
 @app.get("/health")

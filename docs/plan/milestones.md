@@ -36,15 +36,17 @@
 
 ---
 
-## Phase 2 — 인증 (admin 로그인)
+## Phase 2 — 인증 (admin 로그인) ✅
 **Goal:** 비밀번호로 JWT 발급 + 보호된 엔드포인트 검증
 
-- [ ] `app/core/security.py` — 비밀번호 해싱, JWT 처리 ([[../domain/user#인증]])
-- [ ] `app/core/deps.py` — `current_user` / `agent_auth` 의존성 ([[../spec/backend-api#인증]])
-- [ ] `POST /api/auth/login`, `GET /api/auth/me` ([[../spec/backend-api#auth]])
-- [ ] CORS 미들웨어 ([[../spec/backend-api#cors]])
+- [x] `app/core/security.py` — bcrypt 해싱 + JWT (HS256, 30일 TTL)
+- [x] `app/core/deps.py` — `CurrentUser` (Bearer 검증) / `AgentAuth` (X-Agent-Key 검증)
+- [x] `app/repos/user_repo.py`, `app/services/auth_service.py`, `app/schemas/auth.py`, `app/api/auth.py` — 레이어 분리
+- [x] `POST /api/auth/login`, `GET /api/auth/me`
+- [x] CORS 미들웨어 (Phase 1에서 셋업)
+- [x] `scripts/create_admin.py`도 `core/security.hash_password`로 위임 (DRY)
 
-**Deliverable:** `curl -X POST .../login` → JWT, `curl -H "Authorization: Bearer ..." .../me` → 본인 정보.
+**Deliverable:** 6 케이스 통합 테스트 통과 (login 성공/실패, me 누락/유효/만료유사).
 
 ---
 
