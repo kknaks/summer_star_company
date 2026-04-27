@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Git native pre-commit — 커밋 전 문서 정합성 + 코드 lint
+# 실패 시 커밋 차단. 진짜 우회 필요하면 --no-verify (가급적 X)
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+echo "🔍 Pre-commit 검증..."
+
+# ─────────────────────────────────────────────
+# 1. 문서 정합성 — staged된 .md에 옛 결정 잔재 검사
+# ─────────────────────────────────────────────
+# 메타 파일은 스킵 (자기 자신을 검사하면 패턴 예시가 매번 잡힘)
+STAGED_MD=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.md$' \
+  | grep -vE '^\.claude/skills/doc-consistency/' \
+  || true)
+if [ -n "$STAGED_MD" ]; then
+  # 폐기된 결정의 흔적 패턴 (현재 결정과 충돌)
+  STALE_PATTERNS='SQLite 큐|허용 UID 캐시|관리형 Postgres|세션 쿠키|registration mode|active-uids|cache_sync_loop|queue_drain_loop|JWT/OAuth 안 씀'
+  HITS=$(echo "$STAGED_MD" | xargs grep -lE "$STALE_PATTERNS" 2>/dev/null || true)
+  if [ -n "$HITS" ]; then
+    echo ""
+    echo "❌ 옛 결정 잔재 가능성 — 다음 파일 확인:"
+    echo "$HITS" | sed 's/^/   - /'
+    echo ""
+    echo "   (의도적인 부정 참조면 패턴 회피 또는 이 훅의 STALE_PATTERNS 갱신)"
+    exit 1
+  fi
+  echo "  ✓ 문서 정합성 OK"
+fi
+
+# ─────────────────────────────────────────────
+# 2. Python lint — 변경된 .py에만, ruff 있을 때만
+# ─────────────────────────────────────────────
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+if [ -n "$STAGED_PY" ]; then
+  if command -v ruff >/dev/null 2>&1; then
+    echo "  → Python lint (ruff)..."
+    # shellcheck disable=SC2086
+    ruff check $STAGED_PY
+    echo "  ✓ Python lint OK"
+  else
+    echo "  ⚠ ruff 미설치 — Python lint 스킵"
+  fi
+fi
+
+# ─────────────────────────────────────────────
+# 3. TypeScript lint — admin/ 안의 .ts/.tsx만
+# ─────────────────────────────────────────────
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^admin/.*\.tsx?$' || true)
+if [ -n "$STAGED_TS" ] && [ -f "admin/package.json" ]; then
+  echo "  → TypeScript check..."
+  if [ -d "admin/node_modules" ]; then
+    (cd admin && (pnpm lint 2>/dev/null || npm run lint 2>/dev/null || true))
+    echo "  ✓ TS lint OK"
+  else
+    echo "  ⚠ admin/node_modules 없음 — TS lint 스킵"
+  fi
+fi
+
+echo ""
+echo "✅ Pre-commit 통과"
