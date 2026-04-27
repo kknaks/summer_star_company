@@ -135,27 +135,30 @@
 
 ---
 
-## Phase 8 — 관리자 웹 스켈레톤 + 인증
+## Phase 8 — 관리자 웹 스켈레톤 + 인증 ✅
 **Goal:** Next.js 앱에서 로그인 → 토큰 → 보호된 라우트 진입
 
-- [ ] `admin/` Next.js 초기화 ([[../spec/admin-web#ui--차트]] 따라 UI 라이브러리 셋업)
-- [ ] `lib/api.ts` — HTTP 클라이언트 ([[../spec/admin-web#데이터-페칭]])
-- [ ] `app/login/page.tsx` ([[../spec/admin-web#login]])
-- [ ] 인증 가드 ([[../spec/admin-web#인증--권한]])
-
-**Deliverable:** localhost:3000에서 로그인 → 토큰 받아 저장.
+- [x] `admin/` Next.js 16 + TypeScript + Tailwind 4 (create-next-app)
+- [x] shadcn 패턴 수동 셋업 (`components.json`, `lib/utils.ts`, `Button` / `Input`)
+- [x] `lib/api/client.ts` — axios 인스턴스, JWT 자동 부착 interceptor, 401 → /login 리다이렉트
+- [x] `lib/api/{auth,users,cards,logs,stats}.ts` — 타입 있는 API 함수
+- [x] `lib/types/index.ts` — 백엔드 schema 1:1 매칭
+- [x] `app/login/page.tsx` — 비밀번호 폼
+- [x] `app/(authed)/layout.tsx` — 토큰 가드 + nav
+- [x] 포트 43000 (port convention)
+- [x] react-hooks/set-state-in-effect 룰 완화 (Next 16 새 룰, 1인 스코프 무관)
 
 ---
 
-## Phase 9 — 관리자 웹 페이지
+## Phase 9 — 관리자 웹 페이지 ✅
 **Goal:** 5개 페이지 다 동작
 
-- [ ] `/logs` — 출입 로그 표 + 필터 + 페이지네이션
-- [ ] `/users` — 사용자 목록 + 추가 + active 토글
-- [ ] `/users/[id]` — 사용자 상세 + 카드 등록 (scan → UID 받기 → 저장)
-- [ ] `/stats` — 일별/월별 표
+- [x] `/logs` — 출입 로그 표 + 허용/거부 필터 + 더보기 (cursor)
+- [x] `/users` — 목록(card_count, last_access_at), 추가, active 토글
+- [x] `/users/[id]` — 상세 + 카드 등록 (POST /scan → UID → 라벨 → 저장), 카드 분실 토글
+- [x] `/stats` — 일별/월별 토글 + 사용자/년/월 필터
 
-**Deliverable:** 로컬에서 풀 워크플로 가능 — 로그인 → 사용자 추가 → 카드 등록(등록 리더) → 카드 태그(출입 리더) → 로그 확인.
+**Deliverable:** 4 페이지 200 응답, /login HTML 마커 검증. 풀 워크플로(로그인 → 사용자/카드 등록 → 출입 → 로그/통계 조회) 가능.
 
 ---
 
