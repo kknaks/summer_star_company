@@ -22,9 +22,24 @@ PIDS=()
 cleanup() {
   echo
   echo "── 종료 신호 — 정리 중 ──"
+  # 1. 알려진 자식 (awk pipeline 끝의 PID) 종료
   for pid in "${PIDS[@]}"; do
     kill -TERM "$pid" 2>/dev/null || true
   done
+  # 2. port 43000 점유 프로세스 (next dev) — pnpm dev는 자식을 직접 안 죽여서 보강
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -ti :43000 2>/dev/null | xargs -r kill -TERM 2>/dev/null || true
+  fi
+  # 3. agent 프로세스 (다른 프로젝트와 충돌 X — 패턴 명확)
+  pkill -TERM -f "python -m nfc_agent" 2>/dev/null || true
+  pkill -TERM -f "summer_star_company/admin" 2>/dev/null || true
+  sleep 1
+  # 4. 강제 종료 (안 죽었으면)
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -ti :43000 2>/dev/null | xargs -r kill -KILL 2>/dev/null || true
+  fi
+  pkill -KILL -f "python -m nfc_agent" 2>/dev/null || true
+  pkill -KILL -f "summer_star_company/admin" 2>/dev/null || true
   wait 2>/dev/null || true
   docker compose down
   echo "✓ 모두 종료"
