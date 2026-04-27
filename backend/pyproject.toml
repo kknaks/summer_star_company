@@ -11,7 +11,7 @@ dependencies = [
     "bcrypt>=4.0",
     "pyjwt>=2.8",
     "pydantic-settings>=2.5",
-    # pyscard는 등록 리더 연동(Phase 4)에서 추가
+    "pyscard>=2.3",  # 등록 리더(#2) PC/SC 인터페이스
 ]
 
 [dependency-groups]

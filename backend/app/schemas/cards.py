@@ -28,3 +28,9 @@ class CardResponse(BaseModel):
     registered_at: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class CardScanResponse(BaseModel):
+    """등록 리더(#2)에서 읽은 UID 응답."""
+
+    uid: str

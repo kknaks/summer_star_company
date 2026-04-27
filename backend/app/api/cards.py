@@ -5,12 +5,38 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 
 from app.core.deps import CurrentUser, SessionDep
-from app.core.exceptions import CardNotFoundError, CardUidConflictError, UserNotFoundError
+from app.core.exceptions import (
+    CardNotFoundError,
+    CardScanTimeoutError,
+    CardUidConflictError,
+    ReaderUnavailableError,
+    UserNotFoundError,
+)
 from app.core.uid import InvalidUidError
-from app.schemas.cards import CardCreate, CardResponse, CardUpdate
-from app.services import card_service
+from app.schemas.cards import CardCreate, CardResponse, CardScanResponse, CardUpdate
+from app.services import card_reader, card_service
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
+
+
+@router.post("/scan", response_model=CardScanResponse)
+async def scan_card(_: CurrentUser) -> CardScanResponse:
+    """등록 리더(#2)에서 카드 한 장 읽어 UID 반환. DB 쓰기 X.
+
+    timeout 내 카드 안 찍히면 408. 리더 불가 시 503.
+    """
+    try:
+        uid = await card_reader.scan_card_uid()
+    except CardScanTimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_408_REQUEST_TIMEOUT,
+            detail="시간 내 카드가 인식되지 않음",
+        ) from None
+    except ReaderUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)
+        ) from None
+    return CardScanResponse(uid=uid)
 
 
 @router.get("", response_model=list[CardResponse])

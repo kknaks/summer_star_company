@@ -67,14 +67,16 @@
 
 ---
 
-## Phase 4 — 등록 리더(#2) 연동
+## Phase 4 — 등록 리더(#2) 연동 🟡
 **Goal:** `POST /api/cards/scan`이 실제로 카드 읽음
 
-- [ ] `app/services/card_reader.py` — pyscard 래퍼 ([[../spec/backend-api#등록-리더2-운영]])
-- [ ] `POST /api/cards/scan` 엔드포인트 ([[../spec/backend-api#post-apicardsscan-등록-리더2-on-demand-pull]])
-- [ ] **macOS dev에서 ACR122U로 직접 테스트** (이미 `nfc-list` 동작 확인됨)
+- [x] `app/services/card_reader.py` — pyscard `CardRequest` 래퍼, `asyncio.to_thread`로 블로킹 격리
+- [x] `app/core/exceptions`에 `ReaderUnavailableError`, `CardScanTimeoutError` 추가
+- [x] `POST /api/cards/scan` (JWT 보호, 408 timeout / 503 reader unavailable)
+- [x] 401 / 503 케이스 통합 테스트 통과 (리더 미연결)
+- [ ] **실제 카드 태그 → UID 반환 검증** (리더 재연결 시점에 수행)
 
-**Deliverable:** `curl -X POST .../cards/scan` → 카드 찍으면 UID 반환.
+**Deliverable (부분):** 인증/리더 미연결 경로 검증됨. 정상 경로는 하드웨어 재연결 후.
 
 ---
 
