@@ -35,6 +35,14 @@
 | [[spec/nfc-agent]] | Pi에서 도는 Python 에이전트, 카드 감시 + 백엔드 push (단순 데몬) | 🟢 |
 | [[spec/admin-web]] | Next.js 관리자 대시보드 (Vercel) | 🟢 |
 
+## Conventions
+
+| 문서 | 목적 | 상태 |
+|---|---|---|
+| [[conventions/common]] | 언어 무관 공통 (커밋, 주석, 시크릿) | 🟢 |
+| [[conventions/python]] | backend + agent (레이어 구조 명시) | 🟢 |
+| [[conventions/typescript]] | admin (Next.js 레이어 구조 명시) | 🟢 |
+
 ## Plan
 
 | 문서 | 목적 | 상태 |
