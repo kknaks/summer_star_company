@@ -2,7 +2,7 @@
 # 사용:
 #   docker compose -f docker-compose.prod.yml up -d
 #
-# nginx 라우팅: proxy_pass http://127.0.0.1:48000;
+# nginx 라우팅: proxy_pass http://127.0.0.1:58000;
 
 services:
   postgres:
@@ -33,7 +33,7 @@ services:
       READER_NAME: ${READER_NAME:-ACR122U}
       READER_TIMEOUT_SEC: ${READER_TIMEOUT_SEC:-30}
     ports:
-      - "127.0.0.1:48000:8000"   # nginx 만 통해 접근. 외부에서 :48000 직접 X
+      - "58000:8000"   # NPM(컨테이너)이 host gateway로 도달. 외부 차단은 공유기에서
     depends_on:
       postgres:
         condition: service_healthy
