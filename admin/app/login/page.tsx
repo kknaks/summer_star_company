@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AxiosError } from "axios";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Icon from "@/components/pixel/Icon";
+import StatusBar from "@/components/win98/StatusBar";
+import TitleBar from "@/components/win98/TitleBar";
 import { login } from "@/lib/api/auth";
 
 export default function LoginPage() {
@@ -30,24 +31,95 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center p-6">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 bg-white p-6 rounded-lg border border-neutral-200 shadow-sm"
-      >
-        <h1 className="text-xl font-semibold">관리자 로그인</h1>
-        <Input
-          type="password"
-          placeholder="비밀번호"
-          autoFocus
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" disabled={submitting || !password} className="w-full">
-          {submitting ? "..." : "로그인"}
-        </Button>
-      </form>
-    </main>
+    <div className="desktop">
+      <div style={{ width: "100%", maxWidth: 1100 }}>
+        <div className="window login-dialog">
+          <TitleBar title="관리자 로그인" icon="key" />
+          <div className="window-body">
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                background: "#fff",
+                padding: 12,
+                marginBottom: 12,
+                boxShadow:
+                  "inset 1px 1px 0 #404040, inset -1px -1px 0 #fff",
+              }}
+            >
+              <div style={{ flexShrink: 0 }}>
+                <Icon name="key" scale={3} />
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                  Summer Star Admin
+                </div>
+                <div>관리자 비밀번호를 입력하세요.</div>
+              </div>
+            </div>
+
+            <form
+              onSubmit={onSubmit}
+              style={{ display: "flex", flexDirection: "column", gap: 8 }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 600 }}>비밀번호</label>
+              <input
+                type="password"
+                className="input"
+                placeholder="••••••••"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {error && (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--accent-red)",
+                    fontWeight: 700,
+                  }}
+                >
+                  ⚠ {error}
+                </div>
+              )}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  justifyContent: "flex-end",
+                  marginTop: 8,
+                }}
+              >
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting || !password}
+                >
+                  {submitting ? (
+                    <span>
+                      접속중<span className="blink">_</span>
+                    </span>
+                  ) : (
+                    "확인"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setPassword("")}
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          </div>
+          <StatusBar
+            left={<span>준비됨</span>}
+            right={<span className="mono">SSC v1.0</span>}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

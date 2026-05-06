@@ -1,6 +1,8 @@
 // 백엔드 Pydantic 스키마와 1:1 대응.
 // 백엔드 SSOT: docs/spec/backend-api.
 
+export type CharacterId = "c_f1" | "c_f2" | "c_m1" | "c_m2";
+
 export interface UserPublic {
   id: string;
   name: string;
@@ -9,6 +11,7 @@ export interface UserPublic {
 
 export interface User extends UserPublic {
   active: boolean;
+  character_id: CharacterId;
   created_at: string;
   updated_at: string;
 }

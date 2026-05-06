@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { User, UserListItem } from "@/lib/types";
+import type { CharacterId, User, UserListItem } from "@/lib/types";
 
 export async function listUsers(): Promise<UserListItem[]> {
   const { data } = await api.get<UserListItem[]>("/api/users");
@@ -13,7 +13,7 @@ export async function createUser(name: string): Promise<User> {
 
 export async function updateUser(
   id: string,
-  payload: { name?: string; active?: boolean },
+  payload: { name?: string; active?: boolean; character_id?: CharacterId },
 ): Promise<User> {
   const { data } = await api.patch<User>(`/api/users/${id}`, payload);
   return data;

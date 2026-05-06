@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Avatar from "@/components/pixel/Avatar";
 import { createUser, listUsers, updateUser } from "@/lib/api/users";
 import type { UserListItem } from "@/lib/types";
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -45,79 +48,183 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">사용자</h2>
+    <div>
+      <div className="toolbar">
+        <form
+          onSubmit={onAdd}
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <input
+            className="input"
+            placeholder="이름 입력"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{ width: 160 }}
+          />
+          <button
+            type="submit"
+            className="btn"
+            disabled={submitting || !name.trim()}
+          >
+            ＋ 직원 추가
+          </button>
+          {error && (
+            <span
+              style={{ fontSize: 13, color: "var(--accent-red)" }}
+            >
+              {error}
+            </span>
+          )}
+        </form>
+        <span className="sep hide-mobile" />
+        <span className="hide-mobile mono" style={{ fontSize: 13 }}>
+          {users.length}명
+        </span>
+      </div>
 
-      <form
-        onSubmit={onAdd}
-        className="flex gap-2 bg-white border rounded-lg p-3"
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 12,
+          flexWrap: "wrap",
+        }}
       >
-        <Input
-          placeholder="이름"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="max-w-xs"
-        />
-        <Button type="submit" disabled={submitting || !name.trim()}>
-          추가
-        </Button>
-        {error && <p className="text-sm text-red-600 self-center">{error}</p>}
-      </form>
+        {users.map((u) => (
+          <Link
+            key={u.id}
+            href={`/users/${u.id}`}
+            className="avatar-card"
+            style={{
+              flex: "1 1 220px",
+              cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit",
+            }}
+          >
+            <Avatar characterId={u.character_id} seed={u.id} scale={3} />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                flex: 1,
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>{u.name}</div>
+              <div className="text-muted" style={{ fontSize: 12 }}>
+                {u.role === "admin" ? "★ 관리자" : "○ 직원"} · 카드{" "}
+                {u.card_count}장
+              </div>
+              <div className="text-muted mono" style={{ fontSize: 12 }}>
+                {u.last_access_at
+                  ? fmtDate(u.last_access_at).slice(5)
+                  : "—"}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {u.active ? (
+                  <span className="badge badge-ok">
+                    <span className="dot" />
+                    활성
+                  </span>
+                ) : (
+                  <span className="badge badge-off">
+                    <span className="dot" />
+                    비활성
+                  </span>
+                )}
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
 
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left">
+      <div
+        className="win-in"
+        style={{ padding: 2, overflowX: "auto", marginTop: 12 }}
+      >
+        <table className="pixel-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">이름</th>
-              <th className="px-3 py-2">역할</th>
-              <th className="px-3 py-2">카드</th>
-              <th className="px-3 py-2">최근 출입</th>
-              <th className="px-3 py-2">활성</th>
-              <th className="px-3 py-2"></th>
+              <th>이름</th>
+              <th className="hide-mobile">역할</th>
+              <th className="hide-mobile">카드</th>
+              <th className="hide-mobile">최근 출입</th>
+              <th>활성</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="px-3 py-2 font-medium">
-                  <Link href={`/users/${u.id}`} className="hover:underline">
+              <tr key={u.id}>
+                <td>
+                  <Link
+                    href={`/users/${u.id}`}
+                    className="row-link"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Avatar
+                      characterId={u.character_id}
+                      seed={u.id}
+                      scale={1}
+                    />
                     {u.name}
                   </Link>
                 </td>
-                <td className="px-3 py-2">{u.role}</td>
-                <td className="px-3 py-2">{u.card_count}장</td>
-                <td className="px-3 py-2 font-mono text-xs">
-                  {u.last_access_at
-                    ? new Date(u.last_access_at).toLocaleString("ko-KR", {
-                        timeZone: "Asia/Seoul",
-                      })
-                    : "—"}
+                <td className="hide-mobile">{u.role}</td>
+                <td className="hide-mobile mono">{u.card_count}장</td>
+                <td className="hide-mobile mono" style={{ fontSize: 12 }}>
+                  {u.last_access_at ? fmtDate(u.last_access_at) : "—"}
                 </td>
-                <td className="px-3 py-2">
-                  <span
-                    className={
-                      u.active
-                        ? "text-green-700"
-                        : "text-neutral-500"
-                    }
-                  >
-                    {u.active ? "활성" : "비활성"}
-                  </span>
+                <td>
+                  {u.active ? (
+                    <span className="badge badge-ok">
+                      <span className="dot" />
+                      활성
+                    </span>
+                  ) : (
+                    <span className="badge badge-off">
+                      <span className="dot" />
+                      비활성
+                    </span>
+                  )}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <td style={{ textAlign: "right" }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      minWidth: 0,
+                      padding: "2px 8px",
+                      minHeight: 24,
+                      fontSize: 12,
+                    }}
                     onClick={() => onToggleActive(u)}
                   >
                     {u.active ? "비활성화" : "활성화"}
-                  </Button>
+                  </button>
                 </td>
               </tr>
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-neutral-500">
+                <td
+                  colSpan={6}
+                  style={{
+                    padding: "32px 12px",
+                    textAlign: "center",
+                    color: "var(--win-bg-darker)",
+                  }}
+                >
                   사용자 없음
                 </td>
               </tr>

@@ -1,13 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { AxiosError } from "axios";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Avatar from "@/components/pixel/Avatar";
+import { CHARACTER_LIST } from "@/components/pixel/characters";
 import { createCard, listCards, scanCard, updateCard } from "@/lib/api/cards";
-import { listUsers } from "@/lib/api/users";
-import type { Card, UserListItem } from "@/lib/types";
+import { listUsers, updateUser } from "@/lib/api/users";
+import type { CharacterId, Card, UserListItem } from "@/lib/types";
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+}
 
 export default function UserDetailPage({
   params,
@@ -71,116 +76,275 @@ export default function UserDetailPage({
     await load();
   };
 
+  const onPickCharacter = async (cid: CharacterId) => {
+    if (!user || user.character_id === cid) return;
+    await updateUser(id, { character_id: cid });
+    await load();
+  };
+
   if (!user) {
-    return <p className="text-sm text-neutral-500">로딩...</p>;
+    return (
+      <p className="text-muted" style={{ fontSize: 13 }}>
+        로딩...
+      </p>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">{user.name}</h2>
-        <p className="text-sm text-neutral-500">
-          역할: {user.role} / {user.active ? "활성" : "비활성"}
-        </p>
+    <div>
+      <div className="toolbar">
+        <Link href="/users" className="btn" style={{ textDecoration: "none" }}>
+          ← 뒤로
+        </Link>
+        <span className="sep" />
+        <span style={{ fontSize: 13 }}>
+          사용자 / <span style={{ fontWeight: 600 }}>{user.name}</span>
+        </span>
       </div>
 
-      <div className="bg-white border rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold">카드 등록</h3>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div className="mascot-stage" style={{ flex: "0 0 auto" }}>
+          <Avatar
+            characterId={user.character_id}
+            seed={user.id}
+            scale={6}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            flex: 1,
+            minWidth: 200,
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 600 }}>{user.name}</div>
+          <div style={{ fontSize: 13 }}>
+            역할:{" "}
+            <span style={{ fontWeight: 600 }}>
+              {user.role === "admin" ? "★ 관리자" : "○ 직원"}
+            </span>
+          </div>
+          <div style={{ fontSize: 13 }}>
+            상태:{" "}
+            {user.active ? (
+              <span className="badge badge-ok">
+                <span className="dot" />
+                활성
+              </span>
+            ) : (
+              <span className="badge badge-off">
+                <span className="dot" />
+                비활성
+              </span>
+            )}
+          </div>
+          <div className="text-muted mono" style={{ fontSize: 12 }}>
+            ID: {user.id} · 카드 {cards.length}장
+          </div>
+        </div>
+      </div>
+
+      <div className="group">
+        <div className="group-title">캐릭터 선택</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {CHARACTER_LIST.map((c) => {
+            const selected = user.character_id === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={`btn ${selected ? "btn-primary" : ""}`}
+                onClick={() => onPickCharacter(c.id)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: 6,
+                  minWidth: 76,
+                }}
+              >
+                <Avatar characterId={c.id} scale={2} />
+                <span style={{ fontSize: 12 }}>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div
+          className="text-muted mono"
+          style={{ fontSize: 12, marginTop: 8 }}
+        >
+          character_id: {user.character_id}
+        </div>
+      </div>
+
+      <div className="group">
+        <div className="group-title">카드 등록</div>
         {pendingUid ? (
-          <div className="space-y-2">
-            <p className="text-sm">
-              감지된 UID: <code className="font-mono">{pendingUid}</code>
-            </p>
-            <div className="flex gap-2">
-              <Input
-                placeholder="라벨 (선택, 예: 메인)"
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 13 }}>
+              감지된 UID: <code className="mono">{pendingUid}</code>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <input
+                className="input"
+                placeholder="라벨 (예: 메인)"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                className="max-w-xs"
+                style={{ width: 200 }}
               />
-              <Button onClick={onSaveCard}>저장</Button>
-              <Button
-                variant="outline"
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onSaveCard}
+              >
+                저장
+              </button>
+              <button
+                type="button"
+                className="btn"
                 onClick={() => {
                   setPendingUid(null);
                   setLabel("");
                 }}
               >
                 취소
-              </Button>
+              </button>
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            <div className="flex gap-2 items-center">
-              <Input
-                placeholder="UID 직접 입력 (예: 04A1B2C3)"
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                className="input mono"
+                placeholder="UID 직접 입력 (04A1B2C3)"
                 value={manualUid}
                 onChange={(e) => setManualUid(e.target.value)}
-                className="max-w-xs font-mono"
+                style={{ width: 220 }}
               />
-              <Button
+              <button
+                type="button"
+                className="btn"
+                disabled={!manualUid.trim()}
                 onClick={() => {
-                  const v = manualUid.trim().toUpperCase();
-                  if (!v) return;
-                  setPendingUid(v);
+                  setPendingUid(manualUid.trim().toUpperCase());
                   setManualUid("");
                 }}
-                disabled={!manualUid.trim()}
               >
                 다음
-              </Button>
+              </button>
             </div>
-            <Button onClick={onScan} disabled={scanning} variant="outline">
-              {scanning ? "30초 내 카드 태그..." : "또는 등록 리더로 스캔"}
-            </Button>
+            <button
+              type="button"
+              className="btn"
+              onClick={onScan}
+              disabled={scanning}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {scanning ? (
+                <span>
+                  30초 내 카드 태그<span className="blink">_</span>
+                </span>
+              ) : (
+                "📡 등록 리더로 스캔"
+              )}
+            </button>
           </div>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p
+            style={{ fontSize: 13, color: "var(--accent-red)", marginTop: 8 }}
+          >
+            {error}
+          </p>
+        )}
       </div>
 
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left">
+      <div
+        className="win-in"
+        style={{ padding: 2, marginTop: 12, overflowX: "auto" }}
+      >
+        <table className="pixel-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">UID</th>
-              <th className="px-3 py-2">라벨</th>
-              <th className="px-3 py-2">등록</th>
-              <th className="px-3 py-2">활성</th>
-              <th className="px-3 py-2"></th>
+              <th>UID</th>
+              <th className="hide-mobile">라벨</th>
+              <th className="hide-mobile">등록일</th>
+              <th>활성</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {cards.map((c) => (
-              <tr key={c.id} className="border-t">
-                <td className="px-3 py-2 font-mono text-xs">{c.uid}</td>
-                <td className="px-3 py-2">{c.label ?? "—"}</td>
-                <td className="px-3 py-2 font-mono text-xs">
-                  {new Date(c.registered_at).toLocaleDateString("ko-KR", {
-                    timeZone: "Asia/Seoul",
-                  })}
+              <tr key={c.id}>
+                <td className="mono">{c.uid}</td>
+                <td className="hide-mobile">{c.label ?? "—"}</td>
+                <td className="hide-mobile mono" style={{ fontSize: 12 }}>
+                  {fmtDate(c.registered_at)}
                 </td>
-                <td className="px-3 py-2">
-                  <span
-                    className={c.active ? "text-green-700" : "text-neutral-500"}
-                  >
-                    {c.active ? "활성" : "비활성"}
-                  </span>
+                <td>
+                  {c.active ? (
+                    <span className="badge badge-ok">
+                      <span className="dot" />
+                      활성
+                    </span>
+                  ) : (
+                    <span className="badge badge-off">
+                      <span className="dot" />
+                      분실
+                    </span>
+                  )}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <td style={{ textAlign: "right" }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      minWidth: 0,
+                      padding: "2px 8px",
+                      minHeight: 24,
+                      fontSize: 12,
+                    }}
                     onClick={() => onToggleCard(c)}
                   >
                     {c.active ? "분실 처리" : "재활성"}
-                  </Button>
+                  </button>
                 </td>
               </tr>
             ))}
             {cards.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-neutral-500">
+                <td
+                  colSpan={5}
+                  style={{
+                    padding: "32px 12px",
+                    textAlign: "center",
+                    color: "var(--win-bg-darker)",
+                  }}
+                >
                   카드 없음
                 </td>
               </tr>

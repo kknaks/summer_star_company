@@ -42,3 +42,6 @@ Thumbs.db
 # Logs / 임시
 *.log
 .cache/
+
+# Design source (디자인 프로토타입 — 빌드에 포함 X)
+design/

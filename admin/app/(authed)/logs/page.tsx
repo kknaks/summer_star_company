@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import Avatar from "@/components/pixel/Avatar";
+import Icon from "@/components/pixel/Icon";
+import Select from "@/components/win98/Select";
 import { listLogs } from "@/lib/api/logs";
 import { listUsers } from "@/lib/api/users";
 import type { AccessLog, User } from "@/lib/types";
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+}
 
 export default function LogsPage() {
   const [items, setItems] = useState<AccessLog[]>([]);
@@ -48,62 +54,107 @@ export default function LogsPage() {
   }, [allowedFilter]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold flex-1">출입 로그</h2>
-        <select
-          className="border rounded px-2 py-1 text-sm bg-white"
-          value={allowedFilter}
-          onChange={(e) =>
-            setAllowedFilter(e.target.value as "all" | "true" | "false")
-          }
+    <div>
+      <div className="toolbar">
+        <button
+          type="button"
+          className="btn btn-tool"
+          onClick={() => load()}
+          disabled={loading}
+          title="새로고침"
         >
-          <option value="all">전체</option>
-          <option value="true">허용만</option>
-          <option value="false">거부만</option>
-        </select>
+          <Icon name="clock" scale={1} />
+          <span className="lbl">새로고침</span>
+        </button>
+        <span className="sep" />
+        <span style={{ fontSize: 13 }}>필터:</span>
+        <Select<"all" | "true" | "false">
+          value={allowedFilter}
+          onChange={setAllowedFilter}
+          options={[
+            { value: "all", label: "전체" },
+            { value: "true", label: "허용만" },
+            { value: "false", label: "거부만" },
+          ]}
+          ariaLabel="결과 필터"
+          style={{ minWidth: 100 }}
+        />
+        <span className="sep hide-mobile" />
+        <span className="hide-mobile mono" style={{ fontSize: 13 }}>
+          총 {items.length}건
+        </span>
       </div>
 
-      <div className="bg-white border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left">
+      <div
+        className="win-in"
+        style={{ padding: 2, marginTop: 4, overflowX: "auto" }}
+      >
+        <table className="pixel-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2">시각 (KST)</th>
-              <th className="px-3 py-2">사용자</th>
-              <th className="px-3 py-2">UID</th>
-              <th className="px-3 py-2">결과</th>
+              <th>시각 (KST)</th>
+              <th>사용자</th>
+              <th className="hide-mobile">UID</th>
+              <th>결과</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((log) => (
-              <tr key={log.id} className="border-t">
-                <td className="px-3 py-2 font-mono text-xs">
-                  {new Date(log.occurred_at).toLocaleString("ko-KR", {
-                    timeZone: "Asia/Seoul",
-                  })}
-                </td>
-                <td className="px-3 py-2">
-                  {log.user_id
-                    ? users[log.user_id]?.name ?? log.user_id.slice(0, 8)
-                    : "—"}
-                </td>
-                <td className="px-3 py-2 font-mono text-xs">{log.uid}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={
-                      log.allowed
-                        ? "text-green-700 font-medium"
-                        : "text-red-700 font-medium"
-                    }
-                  >
-                    {log.allowed ? "허용" : "거부"}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {items.map((log) => {
+              const u = log.user_id ? users[log.user_id] : null;
+              return (
+                <tr key={log.id}>
+                  <td className="mono">{fmtDate(log.occurred_at)}</td>
+                  <td>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {u && (
+                        <Avatar
+                          characterId={u.character_id}
+                          seed={u.id}
+                          scale={1}
+                        />
+                      )}
+                      <span>
+                        {u ? (
+                          u.name
+                        ) : (
+                          <span className="text-muted">unknown</span>
+                        )}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="mono hide-mobile">{log.uid}</td>
+                  <td>
+                    {log.allowed ? (
+                      <span className="badge badge-ok">
+                        <span className="dot" />
+                        허용
+                      </span>
+                    ) : (
+                      <span className="badge badge-deny">
+                        <span className="dot" />
+                        거부
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {items.length === 0 && !loading && (
               <tr>
-                <td colSpan={4} className="px-3 py-8 text-center text-neutral-500">
+                <td
+                  colSpan={4}
+                  style={{
+                    padding: "32px 12px",
+                    textAlign: "center",
+                    color: "var(--win-bg-darker)",
+                  }}
+                >
                   로그 없음
                 </td>
               </tr>
@@ -112,18 +163,27 @@ export default function LogsPage() {
         </table>
       </div>
 
-      <div className="flex justify-center">
-        {nextCursor ? (
-          <Button
-            variant="outline"
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 12,
+        }}
+      >
+        <span className="text-muted" style={{ fontSize: 13 }}>
+          최신순
+        </span>
+        {nextCursor && (
+          <button
+            type="button"
+            className="btn"
             onClick={() => load(nextCursor)}
             disabled={loading}
           >
             {loading ? "..." : "더 보기"}
-          </Button>
-        ) : items.length > 0 ? (
-          <p className="text-sm text-neutral-500">끝</p>
-        ) : null}
+          </button>
+        )}
       </div>
     </div>
   );

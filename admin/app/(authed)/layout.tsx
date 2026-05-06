@@ -1,17 +1,50 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import Icon from "@/components/pixel/Icon";
+import type { IconName } from "@/components/pixel/icons";
+import Clock from "@/components/win98/Clock";
+import Mascot from "@/components/win98/Mascot";
+import MenuBar from "@/components/win98/MenuBar";
+import StartMenu, {
+  StartMenuItem,
+  StartMenuSeparator,
+} from "@/components/win98/StartMenu";
+import StatusBar from "@/components/win98/StatusBar";
+import Tabs, { type TabItem } from "@/components/win98/Tabs";
+import Taskbar from "@/components/win98/Taskbar";
+import TitleBar from "@/components/win98/TitleBar";
 import { getToken, clearToken } from "@/lib/api/client";
 
-const NAV = [
-  { href: "/logs", label: "출입 로그" },
-  { href: "/users", label: "사용자" },
-  { href: "/stats", label: "통계" },
+const TABS: TabItem[] = [
+  { key: "logs", label: "출입 로그", icon: "log" },
+  { key: "users", label: "사용자", icon: "user" },
+  { key: "stats", label: "통계", icon: "chart" },
 ];
+
+function resolveActive(pathname: string): {
+  key: string;
+  label: string;
+  icon: IconName;
+} {
+  if (pathname.startsWith("/logs")) {
+    return { key: "logs", label: "출입 로그", icon: "log" };
+  }
+  if (pathname.startsWith("/users")) {
+    const isDetail = /^\/users\/[^/]+/.test(pathname);
+    return {
+      key: "users",
+      label: isDetail ? "사용자 상세" : "사용자",
+      icon: "user",
+    };
+  }
+  if (pathname.startsWith("/stats")) {
+    return { key: "stats", label: "통계", icon: "chart" };
+  }
+  return { key: "logs", label: "출입 로그", icon: "log" };
+}
 
 export default function AuthedLayout({
   children,
@@ -21,6 +54,7 @@ export default function AuthedLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -32,43 +66,96 @@ export default function AuthedLayout({
 
   if (!ready) return null;
 
+  const active = resolveActive(pathname);
+  const titleText = `Summer Star Admin — ${active.label}`;
+
   const onLogout = () => {
     clearToken();
     router.replace("/login");
   };
 
+  const onSelectTab = (key: string) => {
+    setStartOpen(false);
+    router.push(`/${key}`);
+  };
+
   return (
-    <div className="flex-1 flex flex-col">
-      <header className="border-b bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-semibold">Summer Star Admin</h1>
-          <nav className="flex gap-2 items-center">
-            {NAV.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-3 py-1 rounded text-sm ${
-                    active
-                      ? "bg-neutral-900 text-white"
-                      : "hover:bg-neutral-100"
-                  }`}
+    <>
+      <div className="desktop">
+        <div className="app-window">
+          <div className="window">
+            <TitleBar
+              title={titleText}
+              icon={active.icon}
+              onClose={onLogout}
+            />
+            <MenuBar items={["파일", "편집", "보기", "도구", "도움말"]} />
+            <Tabs
+              items={TABS}
+              active={active.key}
+              onSelect={onSelectTab}
+              rightSlot={
+                <div
+                  className="tab hide-mobile"
+                  onClick={onLogout}
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: "pointer" }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onLogout();
+                    }
+                  }}
                 >
-                  {item.label}
-                </Link>
-              );
-            })}
-            <Button variant="outline" size="sm" onClick={onLogout}>
-              로그아웃
-            </Button>
-          </nav>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Icon name="power" scale={1} />
+                    로그아웃
+                  </span>
+                </div>
+              }
+            />
+            <div className="tab-panel">{children}</div>
+            <StatusBar
+              left={<span>준비됨</span>}
+              mid={
+                <span className="mono hide-mobile">접속: admin</span>
+              }
+              right={<Clock />}
+            />
+          </div>
+          <Mascot />
         </div>
-      </header>
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
-        {children}
-      </main>
-    </div>
+      </div>
+
+      <Taskbar
+        onStart={() => setStartOpen((o) => !o)}
+        startOpen={startOpen}
+        activeTask={titleText}
+      />
+
+      {startOpen && (
+        <StartMenu onClose={() => setStartOpen(false)}>
+          {TABS.map((t) => (
+            <StartMenuItem
+              key={t.key}
+              icon={t.icon}
+              label={t.label}
+              onClick={() => onSelectTab(t.key)}
+            />
+          ))}
+          <StartMenuSeparator />
+          <StartMenuItem icon="gear" label="설정" />
+          <StartMenuSeparator />
+          <StartMenuItem icon="power" label="로그아웃" onClick={onLogout} />
+        </StartMenu>
+      )}
+    </>
   );
 }

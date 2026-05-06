@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import Icon from "@/components/pixel/Icon";
+import Select from "@/components/win98/Select";
 import { dailyStats, monthlyStats } from "@/lib/api/stats";
 import { listUsers } from "@/lib/api/users";
 import type { DailyStat, MonthlyStat, UserListItem } from "@/lib/types";
+
+function isWeekend(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00+09:00");
+  const dow = d.getUTCDay();
+  return dow === 0 || dow === 6;
+}
 
 export default function StatsPage() {
   const [users, setUsers] = useState<UserListItem[]>([]);
@@ -30,86 +37,252 @@ export default function StatsPage() {
     if (!userId) return;
     setLoading(true);
     if (view === "daily") {
-      dailyStats(userId, year, month).then(setDaily).finally(() => setLoading(false));
+      dailyStats(userId, year, month)
+        .then(setDaily)
+        .finally(() => setLoading(false));
     } else {
-      monthlyStats(userId, year).then(setMonthly).finally(() => setLoading(false));
+      monthlyStats(userId, year)
+        .then(setMonthly)
+        .finally(() => setLoading(false));
     }
   }, [userId, view, year, month]);
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">출퇴근 통계</h2>
-      <p className="text-xs text-neutral-500">
-        하루 컷오프: KST 04:00 (밤샘 시 다음날 새벽까지 같은 날로 계산)
-      </p>
+  const maxDur = Math.max(1, ...daily.map((d) => d.duration_minutes));
+  const maxMonthDur = Math.max(
+    1,
+    ...monthly.map((m) => m.avg_duration_minutes),
+  );
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <select
-          className="border rounded px-2 py-1 text-sm bg-white"
+  const totalMinutes = daily.reduce((a, b) => a + b.duration_minutes, 0);
+  const totalMonthDays = monthly.reduce((a, b) => a + b.work_days, 0);
+  const avgMonthMinutes = monthly.length
+    ? Math.floor(
+        monthly.reduce((a, b) => a + b.avg_duration_minutes, 0) /
+          monthly.length,
+      )
+    : 0;
+
+  return (
+    <div>
+      <div className="toolbar">
+        <Select
           value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-        >
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
-        <Button
-          variant={view === "daily" ? "default" : "outline"}
-          size="sm"
+          onChange={setUserId}
+          options={users.map((u) => ({ value: u.id, label: u.name }))}
+          ariaLabel="사용자 선택"
+          style={{ minWidth: 140 }}
+        />
+        <span className="sep" />
+        <button
+          type="button"
+          className={`btn ${view === "daily" ? "active" : ""}`}
           onClick={() => setView("daily")}
         >
           일별
-        </Button>
-        <Button
-          variant={view === "monthly" ? "default" : "outline"}
-          size="sm"
+        </button>
+        <button
+          type="button"
+          className={`btn ${view === "monthly" ? "active" : ""}`}
           onClick={() => setView("monthly")}
         >
           월별
-        </Button>
+        </button>
+        <span className="sep" />
         <input
           type="number"
-          className="border rounded px-2 py-1 text-sm bg-white w-24"
+          className="input"
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
+          style={{ width: 90 }}
         />
         {view === "daily" && (
           <input
             type="number"
-            className="border rounded px-2 py-1 text-sm bg-white w-20"
+            className="input"
             min={1}
             max={12}
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
+            style={{ width: 70 }}
           />
         )}
       </div>
 
-      <div className="bg-white border rounded-lg overflow-hidden">
+      <div
+        className="text-muted"
+        style={{ fontSize: 12, marginTop: 4, padding: 8 }}
+      >
+        ※ 하루 컷오프: KST 04:00 (밤샘 시 다음날 새벽까지 같은 날로 계산)
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          marginTop: 8,
+        }}
+      >
         {view === "daily" ? (
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
+          <>
+            <div className="stat-tile" style={{ flex: "1 1 180px" }}>
+              <div className="ico">
+                <Icon name="log" scale={2} />
+              </div>
+              <div>
+                <div className="num">
+                  {daily.length}
+                  <span style={{ fontSize: 14 }}>일</span>
+                </div>
+                <div className="lbl">출근일</div>
+              </div>
+            </div>
+            <div className="stat-tile" style={{ flex: "1 1 180px" }}>
+              <div className="ico">
+                <Icon name="clock" scale={2} />
+              </div>
+              <div>
+                <div className="num">
+                  {Math.floor(totalMinutes / 60)}
+                  <span style={{ fontSize: 14 }}>h</span>
+                </div>
+                <div className="lbl">총 체류</div>
+              </div>
+            </div>
+            <div className="stat-tile" style={{ flex: "1 1 180px" }}>
+              <div className="ico">
+                <Icon name="star" scale={2} />
+              </div>
+              <div>
+                <div className="num mono">{daily[0]?.first_in ?? "—"}</div>
+                <div className="lbl">최근 출근</div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="stat-tile" style={{ flex: "1 1 180px" }}>
+              <div className="ico">
+                <Icon name="chart" scale={2} />
+              </div>
+              <div>
+                <div className="num">
+                  {totalMonthDays}
+                  <span style={{ fontSize: 14 }}>일</span>
+                </div>
+                <div className="lbl">올해 출근일</div>
+              </div>
+            </div>
+            <div className="stat-tile" style={{ flex: "1 1 180px" }}>
+              <div className="ico">
+                <Icon name="clock" scale={2} />
+              </div>
+              <div>
+                <div className="num mono">
+                  {Math.floor(avgMonthMinutes / 60)}h{avgMonthMinutes % 60}m
+                </div>
+                <div className="lbl">평균 체류</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="group">
+        <div className="group-title">
+          픽셀 차트 —{" "}
+          {view === "daily"
+            ? `${year}.${month} 일별 체류 분`
+            : `${year} 월별 평균 체류 분`}
+        </div>
+        <div className="bar-chart">
+          {view === "daily"
+            ? daily.map((d) => {
+                const blocks = Math.max(
+                  1,
+                  Math.round((d.duration_minutes / maxDur) * 16),
+                );
+                const weekend = isWeekend(d.date);
+                return (
+                  <div className="bar" key={d.date}>
+                    <div className="value">{d.duration_minutes}</div>
+                    <div className="blocks" style={{ height: "85%" }}>
+                      {Array.from({ length: blocks }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`block ${weekend ? "weekend" : ""}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="label">{Number(d.date.slice(-2))}</div>
+                  </div>
+                );
+              })
+            : monthly.map((m) => {
+                const blocks = Math.max(
+                  1,
+                  Math.round((m.avg_duration_minutes / maxMonthDur) * 16),
+                );
+                return (
+                  <div className="bar" key={m.month}>
+                    <div className="value">{m.avg_duration_minutes}</div>
+                    <div className="blocks" style={{ height: "85%" }}>
+                      {Array.from({ length: blocks }).map((_, i) => (
+                        <div key={i} className="block" />
+                      ))}
+                    </div>
+                    <div className="label">
+                      {Number(m.month.slice(-2))}월
+                    </div>
+                  </div>
+                );
+              })}
+        </div>
+      </div>
+
+      <div
+        className="win-in"
+        style={{ padding: 2, marginTop: 12, overflowX: "auto" }}
+      >
+        {view === "daily" ? (
+          <table className="pixel-table">
+            <thead>
               <tr>
-                <th className="px-3 py-2">일자</th>
-                <th className="px-3 py-2">출근</th>
-                <th className="px-3 py-2">퇴근</th>
-                <th className="px-3 py-2">체류 (분)</th>
+                <th>일자</th>
+                <th>출근</th>
+                <th>퇴근</th>
+                <th>체류 (분)</th>
               </tr>
             </thead>
             <tbody>
               {daily.map((d) => (
-                <tr key={d.date} className="border-t">
-                  <td className="px-3 py-2 font-mono">{d.date}</td>
-                  <td className="px-3 py-2 font-mono">{d.first_in}</td>
-                  <td className="px-3 py-2 font-mono">{d.last_out}</td>
-                  <td className="px-3 py-2 font-mono">{d.duration_minutes}</td>
+                <tr key={d.date}>
+                  <td className="mono">
+                    {d.date}
+                    {isWeekend(d.date) && (
+                      <span
+                        className="text-muted"
+                        style={{ fontSize: 12, marginLeft: 4 }}
+                      >
+                        (주말)
+                      </span>
+                    )}
+                  </td>
+                  <td className="mono">{d.first_in}</td>
+                  <td className="mono">{d.last_out}</td>
+                  <td className="mono">{d.duration_minutes}</td>
                 </tr>
               ))}
               {!loading && daily.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-neutral-500">
+                  <td
+                    colSpan={4}
+                    style={{
+                      padding: "32px 12px",
+                      textAlign: "center",
+                      color: "var(--win-bg-darker)",
+                    }}
+                  >
                     데이터 없음
                   </td>
                 </tr>
@@ -117,29 +290,36 @@ export default function StatsPage() {
             </tbody>
           </table>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left">
+          <table className="pixel-table">
+            <thead>
               <tr>
-                <th className="px-3 py-2">월</th>
-                <th className="px-3 py-2">출근일</th>
-                <th className="px-3 py-2">평균 출근</th>
-                <th className="px-3 py-2">평균 퇴근</th>
-                <th className="px-3 py-2">평균 체류 (분)</th>
+                <th>월</th>
+                <th>출근일</th>
+                <th className="hide-mobile">평균 출근</th>
+                <th className="hide-mobile">평균 퇴근</th>
+                <th>평균 체류</th>
               </tr>
             </thead>
             <tbody>
               {monthly.map((m) => (
-                <tr key={m.month} className="border-t">
-                  <td className="px-3 py-2 font-mono">{m.month}</td>
-                  <td className="px-3 py-2 font-mono">{m.work_days}</td>
-                  <td className="px-3 py-2 font-mono">{m.avg_first_in}</td>
-                  <td className="px-3 py-2 font-mono">{m.avg_last_out}</td>
-                  <td className="px-3 py-2 font-mono">{m.avg_duration_minutes}</td>
+                <tr key={m.month}>
+                  <td className="mono">{m.month}</td>
+                  <td className="mono">{m.work_days}</td>
+                  <td className="mono hide-mobile">{m.avg_first_in}</td>
+                  <td className="mono hide-mobile">{m.avg_last_out}</td>
+                  <td className="mono">{m.avg_duration_minutes}분</td>
                 </tr>
               ))}
               {!loading && monthly.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-neutral-500">
+                  <td
+                    colSpan={5}
+                    style={{
+                      padding: "32px 12px",
+                      textAlign: "center",
+                      color: "var(--win-bg-darker)",
+                    }}
+                  >
                     데이터 없음
                   </td>
                 </tr>
