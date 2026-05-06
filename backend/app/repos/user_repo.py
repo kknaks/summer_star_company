@@ -61,6 +61,7 @@ async def update(
     user_id: UUID,
     name: str | None = None,
     active: bool | None = None,
+    character_id: str | None = None,
 ) -> User | None:
     user = await session.get(User, user_id)
     if user is None:
@@ -69,6 +70,8 @@ async def update(
         user.name = name
     if active is not None:
         user.active = active
+    if character_id is not None:
+        user.character_id = character_id
     await session.flush()
     await session.refresh(user)
     return user

@@ -40,7 +40,11 @@ async def update_user(
 ) -> UserResponse:
     try:
         user = await user_service.update_user(
-            session, user_id, name=payload.name, active=payload.active
+            session,
+            user_id,
+            name=payload.name,
+            active=payload.active,
+            character_id=payload.character_id,
         )
     except UserNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자 없음") from None

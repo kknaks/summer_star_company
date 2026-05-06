@@ -1,9 +1,12 @@
 """User HTTP I/O 스키마. SSOT는 docs/spec/backend-api#users."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+CharacterId = Literal["c_f1", "c_f2", "c_m1", "c_m2"]
 
 
 class UserCreate(BaseModel):
@@ -13,6 +16,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     active: bool | None = None
+    character_id: CharacterId | None = None
 
 
 class UserResponse(BaseModel):
@@ -22,6 +26,7 @@ class UserResponse(BaseModel):
     name: str
     role: str
     active: bool
+    character_id: str
     created_at: datetime
     updated_at: datetime
 

@@ -25,8 +25,15 @@ async def update_user(
     user_id: UUID,
     name: str | None = None,
     active: bool | None = None,
+    character_id: str | None = None,
 ) -> User:
-    user = await user_repo.update(session, user_id, name=name, active=active)
+    user = await user_repo.update(
+        session,
+        user_id,
+        name=name,
+        active=active,
+        character_id=character_id,
+    )
     if user is None:
         raise UserNotFoundError(str(user_id))
     await session.commit()
