@@ -18,6 +18,7 @@ export default function UserDetailPage({
   const [user, setUser] = useState<UserListItem | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+  const [manualUid, setManualUid] = useState("");
   const [label, setLabel] = useState("");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,9 +111,30 @@ export default function UserDetailPage({
             </div>
           </div>
         ) : (
-          <Button onClick={onScan} disabled={scanning}>
-            {scanning ? "30초 내 카드 태그..." : "카드 추가 (등록 리더)"}
-          </Button>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-center">
+              <Input
+                placeholder="UID 직접 입력 (예: 04A1B2C3)"
+                value={manualUid}
+                onChange={(e) => setManualUid(e.target.value)}
+                className="max-w-xs font-mono"
+              />
+              <Button
+                onClick={() => {
+                  const v = manualUid.trim().toUpperCase();
+                  if (!v) return;
+                  setPendingUid(v);
+                  setManualUid("");
+                }}
+                disabled={!manualUid.trim()}
+              >
+                다음
+              </Button>
+            </div>
+            <Button onClick={onScan} disabled={scanning} variant="outline">
+              {scanning ? "30초 내 카드 태그..." : "또는 등록 리더로 스캔"}
+            </Button>
+          </div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>

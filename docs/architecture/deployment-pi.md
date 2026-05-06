@@ -142,6 +142,50 @@ journalctl -u nfc-agent -f
 
 ---
 
+## 운영
+
+### 네트워크 변경 (이사 / WiFi 전환)
+
+WiFi 환경 바뀌면 (예: 사무실 → 집) 새 SSID 등록:
+
+```bash
+sudo nmtui    # 텍스트 GUI: Activate a connection → SSID 선택 → 비번 입력 → Back → Quit
+```
+
+또는 한 줄:
+```bash
+sudo nmcli device wifi connect "<SSID>" password "<비번>"
+```
+
+NetworkManager 가 `/etc/NetworkManager/system-connections/<SSID>.nmconnection` 으로 저장 + autoconnect=yes 기본 → 재부팅 시 자동 연결.
+
+연결 확인:
+```bash
+ip a | grep inet
+ping -c 3 8.8.8.8
+```
+
+### Agent 상태 / 로그
+
+```bash
+sudo systemctl status nfc-agent           # active (running) 떠야 OK
+sudo journalctl -u nfc-agent -n 50        # 최근 50줄
+sudo journalctl -u nfc-agent -f           # 실시간 (Ctrl+C 종료)
+```
+
+카드 태그 → 로그 패턴:
+- 정상: `UID=... allowed=True` + `✓ 허용`
+- 백엔드 도달 실패: `WARNING 백엔드 push 실패: ...` + `✗ 거부`
+
+### Agent 재시작 / .env 갱신 후
+
+```bash
+sudo systemctl restart nfc-agent
+sudo journalctl -u nfc-agent -n 20 --no-pager
+```
+
+---
+
 ## 트러블슈팅
 
 | 증상 | 원인 / 해결 |

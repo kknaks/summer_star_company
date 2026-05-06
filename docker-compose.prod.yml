@@ -33,7 +33,7 @@ services:
       READER_NAME: ${READER_NAME:-ACR122U}
       READER_TIMEOUT_SEC: ${READER_TIMEOUT_SEC:-30}
     ports:
-      - "58000:8000"   # NPM(컨테이너)이 host gateway로 도달. 외부 차단은 공유기에서
+      - "58000:8000"   
     depends_on:
       postgres:
         condition: service_healthy

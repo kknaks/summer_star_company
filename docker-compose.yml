@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-summer_star_company}
     ports:
-      - "45432:5432"
+      - "55432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +29,7 @@ services:
       READER_NAME: ${READER_NAME:-ACR122U}
       READER_TIMEOUT_SEC: ${READER_TIMEOUT_SEC:-30}
     ports:
-      - "48000:8000"
+      - "58000:8000"
     depends_on:
       postgres:
         condition: service_healthy
