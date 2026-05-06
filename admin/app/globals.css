@@ -54,6 +54,13 @@ body {
   background: var(--desk-teal);
   min-height: 100vh;
   overflow-x: hidden;
+  /* iOS PWA: 스크롤 오버바운스 막기 + 안전영역 배경 통일 */
+  overscroll-behavior-y: none;
+}
+
+html {
+  /* PWA standalone 모드에서 바운스 시 노출되는 영역도 회색 데스크톱 배경 */
+  background: var(--desk-teal);
 }
 
 body {
@@ -672,7 +679,8 @@ textarea {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 32px;
+  /* height 고정 X — iOS home indicator 영역(safe-area)을 padding-bottom 으로 흡수 */
+  min-height: 32px;
   background: var(--win-bg);
   box-shadow:
     inset 1px 1px 0 var(--win-white),
@@ -682,6 +690,7 @@ textarea {
   display: flex;
   align-items: center;
   padding: 2px 4px;
+  padding-bottom: calc(2px + env(safe-area-inset-bottom));
   gap: 4px;
   z-index: 50;
   font-size: 13px;
@@ -766,7 +775,8 @@ textarea {
 .desktop {
   min-height: 100vh;
   padding: 16px;
-  padding-bottom: 48px;
+  /* taskbar(32) + safe-area(iOS home indicator) 만큼 컨텐츠 가려지지 않게 */
+  padding-bottom: calc(48px + env(safe-area-inset-bottom));
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -922,7 +932,7 @@ textarea {
   }
   .desktop {
     padding: 0;
-    padding-bottom: 36px;
+    padding-bottom: calc(36px + env(safe-area-inset-bottom));
     background: var(--win-bg);
   }
   .app-window {
