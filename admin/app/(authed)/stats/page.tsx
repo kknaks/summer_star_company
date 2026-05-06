@@ -88,22 +88,26 @@ export default function StatsPage() {
           월별
         </button>
         <span className="sep" />
-        <input
-          type="number"
-          className="input"
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          style={{ width: 90 }}
+        <Select
+          value={String(year)}
+          onChange={(v) => setYear(Number(v))}
+          options={Array.from({ length: 5 }, (_, i) => {
+            const y = now.getFullYear() - 2 + i;
+            return { value: String(y), label: `${y}년` };
+          })}
+          ariaLabel="년 선택"
+          style={{ minWidth: 100 }}
         />
         {view === "daily" && (
-          <input
-            type="number"
-            className="input"
-            min={1}
-            max={12}
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            style={{ width: 70 }}
+          <Select
+            value={String(month)}
+            onChange={(v) => setMonth(Number(v))}
+            options={Array.from({ length: 12 }, (_, i) => ({
+              value: String(i + 1),
+              label: `${i + 1}월`,
+            }))}
+            ariaLabel="월 선택"
+            style={{ minWidth: 80 }}
           />
         )}
       </div>
