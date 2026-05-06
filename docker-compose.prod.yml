@@ -1,10 +1,43 @@
-# 운영 override — backend 를 GHCR 이미지로 교체.
+# 운영 단독 compose — base docker-compose.yml 와 무관.
 # 사용:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml up -d
 #
-# base 의 build 옵션은 image 가 정의되면 자동으로 우선순위 밀림 (compose v2 동작).
+# nginx 라우팅: proxy_pass http://127.0.0.1:48000;
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: summer_star_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     image: ghcr.io/kknaks/summer-star-backend:latest
     pull_policy: always
+    container_name: summer_star_backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      AGENT_API_KEY: ${AGENT_API_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      READER_NAME: ${READER_NAME:-ACR122U}
+      READER_TIMEOUT_SEC: ${READER_TIMEOUT_SEC:-30}
+    ports:
+      - "127.0.0.1:48000:8000"   # nginx 만 통해 접근. 외부에서 :48000 직접 X
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

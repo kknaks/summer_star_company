@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
-      - 'docker-compose.yml'
       - 'docker-compose.prod.yml'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
@@ -76,10 +75,13 @@ jobs:
           envs: PROD_ENV
           script: |
             set -euo pipefail
+            mkdir -p /home/kknaks/ssc
             cd /home/kknaks/ssc
+            curl -fsSL -o docker-compose.prod.yml \
+              https://raw.githubusercontent.com/kknaks/summer_star_company/main/docker-compose.prod.yml
             umask 077
             printf '%s' "$PROD_ENV" > .env
             chmod 600 .env
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d backend
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
