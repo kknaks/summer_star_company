@@ -10,7 +10,7 @@
 |---|---|---|
 | id | uuid | PK |
 | name | text | 표시명 |
-| role | enum | 일단 `admin`만. 향후 `member` / `guest` 등 확장 가능하도록 enum으로 둠 |
+| role | enum | `admin` (관리자, 1명, password_hash 존재) / `staff` (직원, 다수, password 없음). 신규 등록은 자동 `staff`. `admin` 은 `scripts/create_admin.py` 로만 생성 |
 | active | bool | 비활성화 (퇴사 시 false) |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
@@ -30,7 +30,7 @@
 - **stateless** — DB에 sessions 테이블 없음. 강제 로그아웃은 시크릿 로테이션으로 일괄 처리
 - **비밀번호 해싱**: `bcrypt` (직접 사용 — passlib는 bcrypt 4.x 호환 이슈로 회피)
 - **Pi 에이전트 → 백엔드**: 정적 API 키 헤더 (`X-Agent-Key: ...`) — JWT 아님
-- 일반 직원은 로그인 안 함 — 카드만 찍음 (role 추가되면 그때 재검토)
+- **일반 직원(`staff`)은 로그인 안 함** — 카드만 찍음. `password_hash IS NULL`. admin 인증 시 `find_active_admin` 은 `role=admin AND password_hash IS NOT NULL` 두 조건 모두 본다 (방어).
 
 ## 등록 흐름
 

@@ -10,9 +10,13 @@ from app.dtos.users import UserListItem
 
 
 async def find_active_admin(session: AsyncSession) -> User | None:
-    """1인 운영 — 활성 admin 1명 반환."""
+    """1인 운영 — 활성 admin 1명 반환. password_hash 가 있어야 진짜 admin."""
     return await session.scalar(
-        select(User).where(User.role == UserRole.admin, User.active.is_(True))
+        select(User).where(
+            User.role == UserRole.admin,
+            User.active.is_(True),
+            User.password_hash.is_not(None),
+        )
     )
 
 
@@ -48,8 +52,8 @@ async def list_with_aggregates(session: AsyncSession) -> list[UserListItem]:
 
 
 async def add(session: AsyncSession, name: str) -> User:
-    """역할은 자동 admin (현재 enum 값이 admin뿐)."""
-    user = User(name=name, role=UserRole.admin)
+    """신규 사용자는 staff 역할로 생성. admin 은 scripts/create_admin.py 로만 생성."""
+    user = User(name=name, role=UserRole.staff)
     session.add(user)
     await session.flush()
     await session.refresh(user)

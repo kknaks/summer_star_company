@@ -17,6 +17,7 @@ from app.db.base import Base
 
 class UserRole(StrEnum):
     admin = "admin"
+    staff = "staff"
 
 
 user_role_enum = PgEnum(UserRole, name="user_role", create_type=True)
@@ -32,7 +33,7 @@ class User(Base):
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        user_role_enum, nullable=False, server_default=text("'admin'")
+        user_role_enum, nullable=False, server_default=text("'staff'")
     )
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     character_id: Mapped[str] = mapped_column(

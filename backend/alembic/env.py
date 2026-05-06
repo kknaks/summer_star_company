@@ -51,7 +51,13 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    # transaction_per_migration: 각 revision을 독립 트랜잭션으로 실행
+    # (예: ENUM ADD VALUE 후 해당 값을 사용하는 UPDATE 는 다음 revision 에서)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        transaction_per_migration=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
