@@ -11,14 +11,17 @@
 | `DATABASE_URL` | Postgres 접속 | 집 서버 백엔드 환경변수 |
 | admin 비밀번호 (해시) | 관리자 로그인 | DB `users.password_hash` |
 | Postgres 슈퍼유저 비밀번호 | DB 운영 | docker-compose `.env` |
+| `PROD_ENV` (백엔드 .env 통합) | CI → 서버 .env 자동 주입 | GitHub Secrets |
+| `SSH_HOST/USER/KEY/PORT/SERVER_PATH` | GH Actions → 홈서버 ssh 배포 | GitHub Secrets |
 | Cloudflare/도메인 API 토큰 (있으면) | DDNS / Let's Encrypt | 별도 관리 |
 
 ## 시크릿 보관 원칙
 
 - 시크릿은 **절대 git에 커밋하지 않음** — `.env` 는 `.gitignore`. 템플릿은 `.env.example`만 커밋
-- 운영용 `.env`는 집 서버에 직접 배치 (`/etc/nfc-agent.env`, `/srv/backend/.env` 등)
-- 파일 권한 `600` (소유자 읽기만), 소유자는 해당 서비스 user
-- Pi의 `/etc/nfc-agent.env`도 동일 — `nfc` 유저 소유 + `600`
+- 운영용 `.env`:
+  - **백엔드 (집 서버)**: GitHub Secrets `PROD_ENV` 가 SSOT. CI 가 매 배포마다 서버의 `$SERVER_PATH/.env` 로 주입 (`chmod 600`). 시크릿 변경 = GH Secrets 갱신 + push
+  - **에이전트 (Pi)**: `/etc/nfc-agent.env` 에 직접 배치 — Pi 는 GH Actions 닿지 않음
+- 파일 권한 `600` (서버) 또는 `640` (Pi: agent user 읽기 위함). 소유자는 root
 
 ## 시크릿 생성
 

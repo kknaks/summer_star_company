@@ -1,0 +1,10 @@
+# 운영 override — backend 를 GHCR 이미지로 교체.
+# 사용:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# base 의 build 옵션은 image 가 정의되면 자동으로 우선순위 밀림 (compose v2 동작).
+
+services:
+  backend:
+    image: ghcr.io/kknaks/summer-star-backend:latest
+    pull_policy: always

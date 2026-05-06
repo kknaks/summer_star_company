@@ -15,7 +15,7 @@
 | [[architecture/overview]] | 전체 시스템 구조 / 4컴포넌트 / 인증 / 운영 | 🟡 진행 중 |
 | [[architecture/repo-layout]] | monorepo 디렉토리 구조 | 🟢 |
 | [[architecture/security]] | 시크릿 / HTTPS / 백업 / Pi 보안 | 🟢 |
-| [[architecture/deployment-pi]] | Pi 셋업, systemd 서비스 등록 | ⚪ (실제 배포 시) |
+| [[architecture/deployment-pi]] | Pi 셋업, systemd 서비스 등록 | 🟡 진행 중 (Orange Pi Zero 3 배포 중) |
 
 ## Domain
 
