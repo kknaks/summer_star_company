@@ -34,6 +34,139 @@ function isoToLocal(iso: string): string {
   return new Date(kstMs).toISOString().slice(0, 16);
 }
 
+interface DetailModalProps {
+  log: AccessLog;
+  user: User | null;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onToggleVoid: () => Promise<void>;
+  onClose: () => void;
+}
+
+function DetailModal({
+  log,
+  user,
+  isAdmin,
+  onEdit,
+  onToggleVoid,
+  onClose,
+}: DetailModalProps) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const toggle = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await onToggleVoid();
+    } catch (error) {
+      const ax = error as AxiosError<{ detail: string }>;
+      setErr(ax.response?.data?.detail ?? "처리 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const canEdit = isAdmin && log.source === "manual" && !log.voided;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="window"
+        style={{ width: "min(440px, 100%)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <TitleBar title="출입 로그 상세" icon="log" onClose={onClose} />
+        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <Row label="시각 (KST)" value={<span className="mono">{fmtDate(log.occurred_at)}</span>} />
+          <Row
+            label="사용자"
+            value={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                {user && <Avatar characterId={user.character_id} seed={user.id} scale={1} />}
+                <span>{user ? user.name : <span className="text-muted">unknown</span>}</span>
+              </span>
+            }
+          />
+          <Row
+            label="출처"
+            value={
+              log.source === "manual" ? (
+                <span className="badge badge-off">
+                  <span className="dot" />
+                  수동
+                </span>
+              ) : (
+                <span className="mono" style={{ fontSize: 12 }}>{log.uid}</span>
+              )
+            }
+          />
+          <Row
+            label="결과"
+            value={
+              log.voided ? (
+                <span className="badge badge-off"><span className="dot" />무효</span>
+              ) : log.allowed ? (
+                <span className="badge badge-ok"><span className="dot" />허용</span>
+              ) : (
+                <span className="badge badge-deny"><span className="dot" />거부</span>
+              )
+            }
+          />
+          {log.note && (
+            <Row
+              label="메모"
+              value={<span style={{ fontSize: 13 }}>{log.note}</span>}
+            />
+          )}
+          {err && <span style={{ fontSize: 12, color: "var(--accent-red)" }}>{err}</span>}
+          {isAdmin ? (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                justifyContent: "flex-end",
+                marginTop: 4,
+                flexWrap: "wrap",
+              }}
+            >
+              <button type="button" className="btn" onClick={onClose}>닫기</button>
+              {canEdit && (
+                <button type="button" className="btn" onClick={onEdit}>
+                  수정
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn"
+                onClick={toggle}
+                disabled={busy}
+              >
+                {busy ? "..." : log.voided ? "복구" : "무효화"}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+              <button type="button" className="btn" onClick={onClose}>닫기</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <span style={{ fontSize: 12, color: "var(--win-bg-darker)", minWidth: 80 }}>
+        {label}
+      </span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
 interface AddModalProps {
   users: User[];
   onSubmit: (payload: { user_id: string; occurred_at: string; note: string | null }) => Promise<void>;
@@ -229,6 +362,7 @@ export default function LogsPage() {
   const [includeVoided, setIncludeVoided] = useState(false);
   const [meUser, setMeUser] = useState<UserPublic | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [detail, setDetail] = useState<AccessLog | null>(null);
   const [editing, setEditing] = useState<AccessLog | null>(null);
 
   const isAdmin = meUser?.role === "admin";
@@ -366,17 +500,20 @@ export default function LogsPage() {
               <th>사용자</th>
               <th className="hide-mobile">출처</th>
               <th>결과</th>
-              {isAdmin && <th className="hide-mobile"></th>}
             </tr>
           </thead>
           <tbody>
             {items.map((log) => {
               const u = log.user_id ? usersById[log.user_id] : null;
               const rowStyle = log.voided
-                ? { opacity: 0.5, textDecoration: "line-through" as const }
-                : undefined;
+                ? { opacity: 0.5, textDecoration: "line-through" as const, cursor: "pointer" }
+                : { cursor: "pointer" };
               return (
-                <tr key={log.id} style={rowStyle}>
+                <tr
+                  key={log.id}
+                  style={rowStyle}
+                  onClick={() => setDetail(log)}
+                >
                   <td className="mono">
                     {fmtDate(log.occurred_at)}
                     {log.note && (
@@ -442,49 +579,13 @@ export default function LogsPage() {
                       </span>
                     )}
                   </td>
-                  {isAdmin && (
-                    <td
-                      className="hide-mobile"
-                      style={{ textAlign: "right", whiteSpace: "nowrap" }}
-                    >
-                      {log.source === "manual" && !log.voided && (
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{
-                            minWidth: 0,
-                            padding: "2px 8px",
-                            minHeight: 24,
-                            fontSize: 12,
-                            marginRight: 4,
-                          }}
-                          onClick={() => setEditing(log)}
-                        >
-                          수정
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{
-                          minWidth: 0,
-                          padding: "2px 8px",
-                          minHeight: 24,
-                          fontSize: 12,
-                        }}
-                        onClick={() => onToggleVoid(log)}
-                      >
-                        {log.voided ? "복구" : "무효화"}
-                      </button>
-                    </td>
-                  )}
                 </tr>
               );
             })}
             {items.length === 0 && !loading && (
               <tr>
                 <td
-                  colSpan={isAdmin ? 5 : 4}
+                  colSpan={4}
                   style={{
                     padding: "32px 12px",
                     textAlign: "center",
@@ -527,6 +628,22 @@ export default function LogsPage() {
           users={usersList}
           onSubmit={onAdd}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+      {detail && (
+        <DetailModal
+          log={detail}
+          user={detail.user_id ? usersById[detail.user_id] ?? null : null}
+          isAdmin={isAdmin}
+          onEdit={() => {
+            setEditing(detail);
+            setDetail(null);
+          }}
+          onToggleVoid={async () => {
+            await onToggleVoid(detail);
+            setDetail(null);
+          }}
+          onClose={() => setDetail(null)}
         />
       )}
       {editing && (
