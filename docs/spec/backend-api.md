@@ -172,13 +172,18 @@ JWT 필요.
 
 ### Stats
 
-JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]] (KST 04:00 컷오프).
+JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]] SSOT (KST 04:00 컷오프 + 순차 페어링 + 홀수 orphan drop).
+
+필드 의미 (페어링 규칙 기준):
+- `first_in` = 그날 1번째 탭
+- `last_out` = 마지막으로 페어를 닫은 탭 (홀수 탭이면 끝에서 두번째 — 진짜 마지막 탭은 drop됨)
+- `duration_minutes` = ∑(각 페어의 차). 단순 `last_out − first_in` 아님
 
 #### `GET /api/stats/daily?user_id=...&year=...&month=...`
 일별 출/퇴근 (한 달치).
 ```
 응답: [
-  { "date": "2026-04-27", "first_in": "09:12", "last_out": "18:45", "duration_minutes": 573 },
+  { "date": "2026-04-27", "first_in": "09:12", "last_out": "18:45", "duration_minutes": 480 },
   ...
 ]
 ```
@@ -187,12 +192,12 @@ JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]
 월별 집계.
 ```
 응답: [
-  { "month": "2026-04", "work_days": 21, "avg_first_in": "09:08", "avg_last_out": "18:50", "avg_duration_minutes": 580 },
+  { "month": "2026-04", "work_days": 21, "avg_first_in": "09:08", "avg_last_out": "18:50", "avg_duration_minutes": 480 },
   ...
 ]
 ```
 
-> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리.
+> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리. 페어링은 window function (`ROW_NUMBER`)으로 짝수/홀수 인덱스 묶어 차이 합산.
 
 ---
 
