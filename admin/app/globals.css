@@ -53,7 +53,9 @@ body {
   color: var(--win-black);
   background: var(--desk-teal);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* clip 은 hidden 과 달리 스크롤 컨테이너를 안 만듦 — body 가 자기를 scroll
+     container 로 만들어 .desktop 영역 wheel 이 안 먹는 이슈 방지 */
+  overflow-x: clip;
   /* iOS PWA: 스크롤 오버바운스 막기 + 안전영역 배경 통일 */
   overscroll-behavior-y: none;
 }
