@@ -7,7 +7,17 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, String, Text, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -21,6 +31,14 @@ class UserRole(StrEnum):
 
 
 user_role_enum = PgEnum(UserRole, name="user_role", create_type=True)
+
+
+class AccessLogSource(StrEnum):
+    card = "card"
+    manual = "manual"
+
+
+access_log_source_enum = PgEnum(AccessLogSource, name="access_log_source", create_type=True)
 
 
 class User(Base):
@@ -92,7 +110,7 @@ class AccessLog(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )
-    uid: Mapped[str] = mapped_column(Text, nullable=False)
+    uid: Mapped[str | None] = mapped_column(Text, nullable=True)
     card_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True),
         ForeignKey("cards.id", ondelete="SET NULL"),
@@ -104,9 +122,43 @@ class AccessLog(Base):
         nullable=True,
     )
     allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    source: Mapped[AccessLogSource] = mapped_column(
+        access_log_source_enum, nullable=False, server_default=text("'card'")
+    )
+    created_by_user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    voided: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("FALSE")
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
-        Index("access_logs_occurred_at_idx", text("occurred_at DESC")),
-        Index("access_logs_user_id_occurred_idx", "user_id", text("occurred_at DESC")),
-        Index("access_logs_uid_occurred_idx", "uid", text("occurred_at DESC")),
+        CheckConstraint(
+            "source = 'manual' OR uid IS NOT NULL",
+            name="access_logs_source_card_chk",
+        ),
+        CheckConstraint(
+            "source = 'card' OR (user_id IS NOT NULL AND uid IS NULL AND allowed = TRUE)",
+            name="access_logs_source_manual_chk",
+        ),
+        Index(
+            "access_logs_occurred_at_idx",
+            text("occurred_at DESC"),
+            postgresql_where=text("NOT voided"),
+        ),
+        Index(
+            "access_logs_user_id_occurred_idx",
+            "user_id",
+            text("occurred_at DESC"),
+            postgresql_where=text("NOT voided"),
+        ),
+        Index(
+            "access_logs_uid_occurred_idx",
+            "uid",
+            text("occurred_at DESC"),
+            postgresql_where=text("uid IS NOT NULL"),
+        ),
     )

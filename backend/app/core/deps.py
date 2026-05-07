@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.base import get_session
-from app.db.models import User
+from app.db.models import User, UserRole
 from app.repos import user_repo
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -53,5 +53,14 @@ async def verify_agent_key(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="잘못된 에이전트 키")
 
 
+async def get_current_admin(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if user.role != UserRole.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin 권한 필요")
+    return user
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+AdminUser = Annotated[User, Depends(get_current_admin)]
 AgentAuth = Annotated[None, Depends(verify_agent_key)]

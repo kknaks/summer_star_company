@@ -1,4 +1,4 @@
-"""출입 로그 라우터. cursor 페이지네이션 + 필터."""
+"""출입 로그 라우터. cursor 페이지네이션 + 필터 + 수동 CRUD."""
 
 from datetime import datetime
 from typing import Annotated
@@ -6,9 +6,20 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import AdminUser, CurrentUser, SessionDep
+from app.core.exceptions import (
+    AccessLogImmutableFieldError,
+    AccessLogNotFoundError,
+    FutureOccurredAtError,
+    UserNotFoundError,
+)
 from app.dtos.access import decode_cursor
-from app.schemas.logs import AccessLogListResponse, AccessLogResponse
+from app.schemas.logs import (
+    AccessLogCreateRequest,
+    AccessLogListResponse,
+    AccessLogResponse,
+    AccessLogUpdateRequest,
+)
 from app.services import log_service
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
@@ -22,6 +33,7 @@ async def list_logs(
     from_dt: Annotated[datetime | None, Query(alias="from")] = None,
     to_dt: Annotated[datetime | None, Query(alias="to")] = None,
     allowed: bool | None = None,
+    include_voided: bool = False,
     cursor: str | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> AccessLogListResponse:
@@ -41,6 +53,7 @@ async def list_logs(
         from_dt=from_dt,
         to_dt=to_dt,
         allowed=allowed,
+        include_voided=include_voided,
         cursor=cursor_parts,
         limit=limit,
     )
@@ -48,3 +61,76 @@ async def list_logs(
         items=[AccessLogResponse.model_validate(r) for r in items],
         next_cursor=next_cursor,
     )
+
+
+@router.post("", response_model=AccessLogResponse, status_code=status.HTTP_201_CREATED)
+async def create_manual_log(
+    session: SessionDep,
+    actor: AdminUser,
+    payload: AccessLogCreateRequest,
+) -> AccessLogResponse:
+    try:
+        log = await log_service.insert_manual(
+            session,
+            user_id=payload.user_id,
+            occurred_at=payload.occurred_at,
+            note=payload.note,
+            actor_id=actor.id,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        ) from None
+    except FutureOccurredAtError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        ) from None
+    return AccessLogResponse.model_validate(log)
+
+
+@router.patch("/{log_id}", response_model=AccessLogResponse)
+async def update_log(
+    session: SessionDep,
+    _: AdminUser,
+    log_id: int,
+    payload: AccessLogUpdateRequest,
+) -> AccessLogResponse:
+    note_provided = "note" in payload.model_fields_set
+    try:
+        log = await log_service.update_log(
+            session,
+            log_id=log_id,
+            occurred_at=payload.occurred_at,
+            note_provided=note_provided,
+            note=payload.note,
+            voided=payload.voided,
+        )
+    except AccessLogNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+        ) from None
+    except AccessLogImmutableFieldError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        ) from None
+    except FutureOccurredAtError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        ) from None
+    return AccessLogResponse.model_validate(log)
+
+
+@router.delete("/{log_id}", response_model=AccessLogResponse)
+async def void_log(
+    session: SessionDep,
+    _: AdminUser,
+    log_id: int,
+) -> AccessLogResponse:
+    """soft delete = voided=true. PATCH {voided:true} 와 동치."""
+    try:
+        log = await log_service.void_log(session, log_id=log_id)
+    except AccessLogNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+        ) from None
+    return AccessLogResponse.model_validate(log)

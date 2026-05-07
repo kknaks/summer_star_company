@@ -23,3 +23,15 @@ class ReaderUnavailableError(DomainError):
 
 class CardScanTimeoutError(DomainError):
     """등록 리더에 timeout 동안 카드 안 찍힘."""
+
+
+class AccessLogNotFoundError(DomainError):
+    pass
+
+
+class AccessLogImmutableFieldError(DomainError):
+    """source='card' row 에서 occurred_at 등 raw 필드를 수정하려 할 때."""
+
+
+class FutureOccurredAtError(DomainError):
+    """수동 입력 occurred_at 이 미래 시각."""
