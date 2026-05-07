@@ -7,6 +7,17 @@ import Avatar from "@/components/pixel/Avatar";
 import Icon from "@/components/pixel/Icon";
 import Select from "@/components/win98/Select";
 import TitleBar from "@/components/win98/TitleBar";
+
+// 모달 열려있는 동안 body scroll 잠금 — 배경 스크롤 / 닫을 때 위치 안 돌아오는 이슈 방지
+function useLockBodyScroll() {
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
+}
 import { me } from "@/lib/api/auth";
 import {
   createLog,
@@ -51,6 +62,7 @@ function DetailModal({
   onToggleVoid,
   onClose,
 }: DetailModalProps) {
+  useLockBodyScroll();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -174,6 +186,7 @@ interface AddModalProps {
 }
 
 function AddManualModal({ users, onSubmit, onClose }: AddModalProps) {
+  useLockBodyScroll();
   const activeUsers = users.filter((u) => u.active);
   const [userId, setUserId] = useState(activeUsers[0]?.id ?? "");
   const [occurredAt, setOccurredAt] = useState(() => {
@@ -278,6 +291,7 @@ interface EditModalProps {
 }
 
 function EditManualModal({ log, onSubmit, onClose }: EditModalProps) {
+  useLockBodyScroll();
   const [occurredAt, setOccurredAt] = useState(isoToLocal(log.occurred_at));
   const [note, setNote] = useState(log.note ?? "");
   const [submitting, setSubmitting] = useState(false);
