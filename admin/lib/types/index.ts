@@ -32,14 +32,20 @@ export interface Card {
   updated_at: string;
 }
 
+export type AccessLogSource = "card" | "manual";
+
 export interface AccessLog {
   id: number;
   occurred_at: string;
   received_at: string;
-  uid: string;
+  uid: string | null;
   card_id: string | null;
   user_id: string | null;
   allowed: boolean;
+  source: AccessLogSource;
+  created_by_user_id: string | null;
+  voided: boolean;
+  note: string | null;
 }
 
 export interface AccessLogList {
