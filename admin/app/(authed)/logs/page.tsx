@@ -7,36 +7,6 @@ import Avatar from "@/components/pixel/Avatar";
 import Icon from "@/components/pixel/Icon";
 import Select from "@/components/win98/Select";
 import TitleBar from "@/components/win98/TitleBar";
-
-// 모달 열려있는 동안 body scroll 잠금.
-// - 배경 스크롤 막고, 닫을 때 원래 스크롤 위치 유지
-// - 모달 전환(상세→수정) 시 cleanup race 로 body 잠긴 채 남는 이슈 방지: 카운터 기반
-let _lockCount = 0;
-let _lockedScrollY = 0;
-function useLockBodyScroll() {
-  useEffect(() => {
-    if (_lockCount === 0) {
-      _lockedScrollY = window.scrollY;
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${_lockedScrollY}px`;
-      document.body.style.left = "0";
-      document.body.style.right = "0";
-      document.body.style.width = "100%";
-    }
-    _lockCount += 1;
-    return () => {
-      _lockCount -= 1;
-      if (_lockCount === 0) {
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.left = "";
-        document.body.style.right = "";
-        document.body.style.width = "";
-        window.scrollTo(0, _lockedScrollY);
-      }
-    };
-  }, []);
-}
 import { me } from "@/lib/api/auth";
 import {
   createLog,
@@ -46,6 +16,40 @@ import {
 } from "@/lib/api/logs";
 import { listUsers } from "@/lib/api/users";
 import type { AccessLog, User, UserPublic } from "@/lib/types";
+
+// 페이지 마운트 시 body inline style 잔재 청소 — 이전 버그 / SW 캐시 등으로
+// position:fixed / overflow:hidden 이 남은 경우를 방어
+function useResetBodyOnMount() {
+  useEffect(() => {
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+  }, []);
+}
+
+// 모달 mount 동안 body scroll 잠금 (iOS 호환 position:fixed 패턴).
+// 동시에 여러 모달이 mount 되는 일은 없도록 호출 측에서 보장 (우리 코드는 그렇게 되어 있음).
+function useLockBodyScroll() {
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
@@ -384,6 +388,7 @@ function EditManualModal({ log, onSubmit, onClose }: EditModalProps) {
 }
 
 export default function LogsPage() {
+  useResetBodyOnMount();
   const [items, setItems] = useState<AccessLog[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
