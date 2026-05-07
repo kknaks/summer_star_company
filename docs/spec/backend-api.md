@@ -172,12 +172,12 @@ JWT 필요.
 
 ### Stats
 
-JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]] SSOT (KST 04:00 컷오프 + 순차 페어링 + 홀수 orphan drop).
+JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]] SSOT (KST 04:00 컷오프 + 출근/퇴근 앵커 + 중간 페어링 휴게 차감).
 
-필드 의미 (페어링 규칙 기준):
-- `first_in` = 그날 1번째 탭
-- `last_out` = 마지막으로 페어를 닫은 탭 (홀수 탭이면 끝에서 두번째 — 진짜 마지막 탭은 drop됨)
-- `duration_minutes` = ∑(각 페어의 차). 단순 `last_out − first_in` 아님
+필드 의미:
+- `first_in` = 그날 1번째 탭 (= 출근시각, 항상)
+- `last_out` = 그날 마지막 탭 (= 퇴근시각, 항상)
+- `duration_minutes` = (last_out − first_in) − ∑휴게. 중간 탭 (2,3),(4,5)… 페어가 휴게, 홀수 orphan은 퇴근시각까지 휴게로 인정
 
 #### `GET /api/stats/daily?user_id=...&year=...&month=...`
 일별 출/퇴근 (한 달치).
@@ -197,7 +197,7 @@ JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]
 ]
 ```
 
-> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리. 페어링은 window function (`ROW_NUMBER`)으로 짝수/홀수 인덱스 묶어 차이 합산.
+> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리. 휴게는 window function (`ROW_NUMBER` 짝/홀)으로 중간 탭 페어 묶어 차이 합산, orphan(홀수)은 퇴근시각까지로 처리.
 
 ---
 

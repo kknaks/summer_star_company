@@ -190,18 +190,18 @@
 
 ---
 
-## Phase 11 — 출퇴근 해석 페어링 재구현
-**Goal:** Phase 7의 `first_in/last_out/duration` 계산을 페어링 모델로 교체. 휴게(중간 외출) 시간이 근무시간에서 자동 차감되고, 누락 탭은 사업주에게 유리하게 해석.
+## Phase 11 — 출퇴근 해석 앵커 모델 재구현
+**Goal:** Phase 7의 `first_in/last_out/duration` 계산을 앵커 모델로 교체. 출근=1번째·퇴근=마지막 앵커 고정 + 중간 탭 페어로 휴게 차감 + 홀수 orphan은 퇴근까지 휴게 처리.
 
 규칙은 [[../domain/access-log#출퇴근-해석]] SSOT.
 
-- [ ] `repos/access_log_repo.daily_stats` raw SQL 재작성 — KST 컷오프 + 30초 더블탭 클러스터 + `ROW_NUMBER`로 짝/홀 인덱스 페어링 + 홀수면 마지막 drop + ∑(페어 차)
+- [ ] `repos/access_log_repo.daily_stats` raw SQL 재작성 — KST 컷오프 + 30초 더블탭 클러스터 + 첫/마지막 앵커 + 중간 탭 (2,3)(4,5) 페어 휴게 합 + 홀수 orphan→퇴근까지 휴게
 - [ ] `repos/access_log_repo.monthly_stats` 동일 원리로 재작성
-- [ ] `services/stats_service` — 응답 포맷 동일 유지 (`first_in`/`last_out`/`duration_minutes`), `last_out` 의미 주석 업데이트 ([[../spec/backend-api#stats]])
-- [ ] 테스트 케이스: 정상 4탭, 더블탭 흡수, 홀수(퇴근 누락), 홀수(중간 누락), 1탭 only, 04:00 컷오프 경계
+- [ ] `services/stats_service` — 응답 포맷 동일 유지 (`first_in`/`last_out`/`duration_minutes`). `last_out`은 항상 그날 마지막 탭, `duration_minutes`는 휴게 차감된 순근무
+- [ ] 테스트 케이스: 정상 4탭, 더블탭 흡수, 홀수(퇴근 누락 = 3탭), 홀수(중간 누락 = 5탭), 1탭 only, 04:00 컷오프 경계
 - [ ] admin `/stats` 페이지는 그대로 (응답 shape 안 바뀜)
 
-**Deliverable:** 동일한 raw 로그를 페어링 규칙으로 재계산 → 휴게 시간만큼 duration 줄어드는 것 검증. 홀수 탭 케이스 보수적 해석 검증.
+**Deliverable:** 동일한 raw 로그를 앵커 모델로 재계산 → 휴게 시간만큼 duration 줄어드는 것 검증. 홀수 탭 케이스에서 orphan→퇴근까지 휴게 처리 검증.
 
 ---
 
