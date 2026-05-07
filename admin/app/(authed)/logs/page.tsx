@@ -366,7 +366,7 @@ export default function LogsPage() {
               <th>사용자</th>
               <th className="hide-mobile">출처</th>
               <th>결과</th>
-              {isAdmin && <th></th>}
+              {isAdmin && <th className="hide-mobile"></th>}
             </tr>
           </thead>
           <tbody>
@@ -443,7 +443,10 @@ export default function LogsPage() {
                     )}
                   </td>
                   {isAdmin && (
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                    <td
+                      className="hide-mobile"
+                      style={{ textAlign: "right", whiteSpace: "nowrap" }}
+                    >
                       {log.source === "manual" && !log.voided && (
                         <button
                           type="button"
