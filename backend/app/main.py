@@ -5,11 +5,11 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from alembic.config import Config as AlembicConfig
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from alembic import command
+from alembic.config import Config as AlembicConfig
 from app.api import access as access_api
 from app.api import auth as auth_api
 from app.api import cards as cards_api
@@ -44,7 +44,7 @@ app = FastAPI(title="Summer Star Company API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=False,
 )

@@ -241,7 +241,7 @@ JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]
 
 Vercel admin 웹이 cross-origin 호출. CORSMiddleware:
 - `allow_origins`: `["https://<vercel-domain>", "http://localhost:3000"]`
-- `allow_methods`: `["GET", "POST", "PATCH", "OPTIONS"]`
+- `allow_methods`: `["GET", "POST", "PATCH", "DELETE", "OPTIONS"]`
 - `allow_headers`: `["Authorization", "Content-Type"]`
 - `allow_credentials`: False (Bearer 토큰이라 쿠키 불필요)
 
