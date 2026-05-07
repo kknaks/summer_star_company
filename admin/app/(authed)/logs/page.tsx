@@ -8,13 +8,32 @@ import Icon from "@/components/pixel/Icon";
 import Select from "@/components/win98/Select";
 import TitleBar from "@/components/win98/TitleBar";
 
-// 모달 열려있는 동안 body scroll 잠금 — 배경 스크롤 / 닫을 때 위치 안 돌아오는 이슈 방지
+// 모달 열려있는 동안 body scroll 잠금.
+// - 배경 스크롤 막고, 닫을 때 원래 스크롤 위치 유지
+// - 모달 전환(상세→수정) 시 cleanup race 로 body 잠긴 채 남는 이슈 방지: 카운터 기반
+let _lockCount = 0;
+let _lockedScrollY = 0;
 function useLockBodyScroll() {
   useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (_lockCount === 0) {
+      _lockedScrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${_lockedScrollY}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+      document.body.style.width = "100%";
+    }
+    _lockCount += 1;
     return () => {
-      document.body.style.overflow = original;
+      _lockCount -= 1;
+      if (_lockCount === 0) {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+        document.body.style.width = "";
+        window.scrollTo(0, _lockedScrollY);
+      }
     };
   }, []);
 }
