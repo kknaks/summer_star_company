@@ -7,12 +7,16 @@
 | 필드 | 타입 | 비고 |
 |---|---|---|
 | id | bigserial | PK (시간순 자연 정렬용) |
-| occurred_at | timestamptz | 카드 찍힌 시각 (Pi 에이전트 발생 시각 기준) |
-| received_at | timestamptz | 백엔드 수신 시각 (네트워크 단절 후 재전송 추적용) |
-| uid | text | 찍힌 카드의 UID (정규화된 대문자 hex). [[card]]가 미등록이어도 raw로 보존 |
-| card_id | uuid | FK → [[card]]. 미등록 카드면 NULL |
-| user_id | uuid | FK → [[user]]. 미등록 카드면 NULL |
-| allowed | bool | 출입 허용 여부 (true=통과, false=거부) |
+| occurred_at | timestamptz | 카드 찍힌 시각 (Pi 에이전트 발생 시각 기준). 수동일 땐 admin이 입력한 시각 |
+| received_at | timestamptz | 백엔드 수신 시각 (네트워크 단절 후 재전송 추적용). 수동일 땐 INSERT 시각 |
+| uid | text NULL | 찍힌 카드의 UID (정규화된 대문자 hex). 카드 탭이면 NOT NULL, 수동 입력이면 NULL |
+| card_id | uuid | FK → [[card]]. 미등록 카드/수동 입력이면 NULL |
+| user_id | uuid | FK → [[user]]. 미등록 카드면 NULL, 수동 입력은 NOT NULL |
+| allowed | bool | 출입 허용 여부 (true=통과, false=거부). 수동 입력은 항상 true |
+| source | enum('card','manual') | 출처. 카드 탭 vs admin 수동 입력. default 'card' |
+| created_by_user_id | uuid NULL | 수동일 때 작성한 admin id (audit). 카드 탭이면 NULL |
+| voided | bool | soft delete 플래그. true면 통계/기본 조회에서 제외 |
+| note | text NULL | 수동 입력 시 메모 (선택) |
 
 > `occurred_at` ≠ `received_at`인 경우 = 네트워크 단절로 Pi 로컬 큐에 쌓였다 재전송된 케이스. 출퇴근 통계는 무조건 `occurred_at` 기준.
 
@@ -64,6 +68,24 @@
 카드 2장 운영 스코프 — 거부 사유 분류는 오버엔지니어링. 그냥 `allowed=false`로만 기록.
 조회할 때 [[card]] 상태 / [[user]] 상태 join으로 사후 추론 가능.
 
+## 수동 입력 (admin CRUD)
+
+직원이 탭을 누락한 날 admin이 사후에 보정. raw 카드 탭과 별개 row로 보존.
+
+규칙:
+- **권한**: `admin` role만 (staff 차단). [[user#권한]]
+- **source 별 가능 동작**:
+  - `card`: 수정 X (raw 무결성), void만 가능 (잘못 찍힌 거 무효화)
+  - `manual`: 수정/void 모두 가능
+- **insert** 시 자동 채움: `source='manual'`, `allowed=true`, `uid=NULL`, `card_id=NULL`, `created_by_user_id=현재 admin`
+- **void(soft delete)**: `voided=true`로 플래그. row는 보존 (audit). 통계 쿼리는 `WHERE NOT voided`로 제외
+- **복구**: `voided=false` 토글
+- **30초 더블탭 흡수는 source 무관하게 적용** — 수동 탭이 카드 탭과 30초 이내면 합쳐짐
+
+통계와의 관계:
+- `voided=false`인 모든 row가 출퇴근 해석에 참여 (source 무관)
+- 즉 admin이 누락 탭 보정하면 그 날의 페어링이 자동으로 정상화됨
+
 ## 인덱스 (초안)
 
 - `(occurred_at DESC)` — 최근 로그 조회
@@ -73,10 +95,6 @@
 ## 보존
 
 개인 사무실 스코프 — 굳이 만료 정책 안 둬도 양 부담 없음. 직원 5명 × 하루 4번 × 365일 = 7300건/년. 그냥 쌓아둠.
-
-## 결정 필요
-
-- [ ] **관리자 수동 보정** — 직원이 탭 누락한 날, admin이 사후에 누락 탭을 추가/수정할 수 있는 UI가 필요한지. 운영해보고 빈도 보고 결정. 도입 시 access_log raw 보존 정책과 충돌 — 별도 audit 컬럼(`source: card | manual`, `created_by`) 필요
 
 ## 참고
 

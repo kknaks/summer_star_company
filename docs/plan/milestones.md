@@ -195,7 +195,7 @@
 
 규칙은 [[../domain/access-log#출퇴근-해석]] SSOT.
 
-- [ ] `repos/access_log_repo.daily_stats` raw SQL 재작성 — KST 컷오프 + 30초 더블탭 클러스터 + 첫/마지막 앵커 + 중간 탭 (2,3)(4,5) 페어 휴게 합 + 홀수 orphan→퇴근까지 휴게
+- [ ] `repos/access_log_repo.daily_stats` raw SQL 재작성 — KST 컷오프 + 30초 더블탭 클러스터 + 첫/마지막 앵커 + 중간 탭 (2,3)(4,5) 페어 휴게 합 + 홀수 orphan→퇴근까지 휴게 + `WHERE NOT voided`
 - [ ] `repos/access_log_repo.monthly_stats` 동일 원리로 재작성
 - [ ] `services/stats_service` — 응답 포맷 동일 유지 (`first_in`/`last_out`/`duration_minutes`). `last_out`은 항상 그날 마지막 탭, `duration_minutes`는 휴게 차감된 순근무
 - [ ] 테스트 케이스: 정상 4탭, 더블탭 흡수, 홀수(퇴근 누락 = 3탭), 홀수(중간 누락 = 5탭), 1탭 only, 04:00 컷오프 경계
@@ -205,12 +205,38 @@
 
 ---
 
+## Phase 12 — 수동 입력 CRUD (admin 보정)
+**Goal:** admin이 누락 탭을 수동 추가/수정/void/복구할 수 있게. raw 카드 탭은 무결성 유지하면서 수동 보정만 별 row로.
+
+규칙은 [[../domain/access-log#수동-입력-admin-crud]] SSOT.
+
+### 12-A. DB 스키마
+- [ ] alembic 마이그레이션 — `access_log_source` enum 생성, `access_logs`에 `source` / `created_by_user_id` / `voided` / `note` 컬럼 추가, `uid`를 nullable로, CHECK 제약 추가, 기존 인덱스를 `WHERE NOT voided` 부분 인덱스로 교체 ([[../spec/database#access_logs]])
+- [ ] SQLAlchemy 모델 갱신
+
+### 12-B. 백엔드 API
+- [ ] `core/deps.py` — `AdminUser` 가드 (admin role만)
+- [ ] `repos/access_log_repo` — `insert_manual`, `update`, `set_voided` 메서드
+- [ ] `services/log_service` — 비즈니스 룰 (source별 수정 가능 필드, future occurred_at 거부 등)
+- [ ] `api/logs.py` — `POST /api/logs`, `PATCH /api/logs/{id}`, `DELETE /api/logs/{id}` 엔드포인트
+- [ ] `GET /api/logs` 갱신 — `include_voided` 쿼리 파라미터, 응답에 `source`/`voided`/`note`/`created_by_user_id` 포함
+- [ ] 테스트: insert(성공/admin아님 403), card row의 occurred_at 수정 422, manual row 수정 OK, void/복구 토글, 통계가 voided 제외하는지
+
+### 12-C. admin 웹
+- [ ] `lib/api/logs.ts` — 새 엔드포인트 함수 추가
+- [ ] `/logs` 페이지 — source 배지, void 행 styling, "+ 탭 추가" 버튼 + 모달, 행 수정/void/복구 액션
+- [ ] admin role 가드 (staff에겐 액션 숨김)
+
+**Deliverable:** admin이 누락 탭 추가 → 통계가 즉시 정상화되는 것 검증. card row void → 통계에서 제외되는 것 검증.
+
+---
+
 ## 의존 관계 그래프
 
 ```
 Phase 0 ─ Phase 1 ─ Phase 2 ─┬─ Phase 3 ─ Phase 4 ─ Phase 5 ─ Phase 6
                               │
-                              └─ Phase 7 (Logs/Stats API) ─── Phase 11 (페어링 재구현)
+                              └─ Phase 7 (Logs/Stats API) ─── Phase 11 (앵커 재구현) ─ Phase 12 (수동 CRUD)
                                    │
                               Phase 8 ─ Phase 9
                                    │
@@ -220,7 +246,7 @@ Phase 0 ─ Phase 1 ─ Phase 2 ─┬─ Phase 3 ─ Phase 4 ─ Phase 5 ─ Ph
 - Phase 6/7은 의존 없으므로 병렬 가능
 - Phase 8은 Phase 2(인증) 이후 언제든 가능, Phase 9는 Phase 7 결과 필요
 - 하드웨어 검증은 Phase 4 / 6에 분산되어 있음 (한 번에 모이지 않게)
-- Phase 11은 Phase 7 결과 보정 — Phase 10 배포와 독립
+- Phase 11/12는 Phase 7 결과 보정 — Phase 10 배포와 독립. Phase 12는 11의 `WHERE NOT voided` 통합과 정합 필요
 
 ## 우선순위 메모
 

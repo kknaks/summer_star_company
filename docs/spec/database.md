@@ -64,24 +64,36 @@ CREATE INDEX cards_active_idx  ON cards(active) WHERE active = TRUE;  -- 부분 
 [[../domain/access-log]] SSOT.
 
 ```sql
+CREATE TYPE access_log_source AS ENUM ('card', 'manual');
+
 CREATE TABLE access_logs (
-  id           BIGSERIAL PRIMARY KEY,
-  occurred_at  TIMESTAMPTZ NOT NULL,                           -- Pi에서 카드 찍힌 시각
-  received_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),             -- 백엔드 수신 시각
-  uid          TEXT NOT NULL,                                  -- 미등록 카드도 raw 보존
-  card_id      UUID REFERENCES cards(id),                      -- NULL 허용
-  user_id      UUID REFERENCES users(id),                      -- NULL 허용
-  allowed      BOOLEAN NOT NULL
+  id                   BIGSERIAL PRIMARY KEY,
+  occurred_at          TIMESTAMPTZ NOT NULL,                       -- Pi에서 카드 찍힌 시각 / 수동이면 admin 입력값
+  received_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),         -- 백엔드 수신 시각 / 수동이면 INSERT 시각
+  uid                  TEXT,                                       -- 카드 탭이면 NOT NULL, 수동이면 NULL
+  card_id              UUID REFERENCES cards(id),                  -- NULL 허용
+  user_id              UUID REFERENCES users(id),                  -- 카드 미등록이면 NULL, 수동이면 NOT NULL
+  allowed              BOOLEAN NOT NULL,                           -- 수동은 true 강제
+  source               access_log_source NOT NULL DEFAULT 'card',
+  created_by_user_id   UUID REFERENCES users(id),                  -- 수동일 때 작성 admin (audit)
+  voided               BOOLEAN NOT NULL DEFAULT FALSE,             -- soft delete
+  note                 TEXT,
+  CONSTRAINT access_logs_source_card_chk
+    CHECK (source = 'manual' OR uid IS NOT NULL),
+  CONSTRAINT access_logs_source_manual_chk
+    CHECK (source = 'card' OR (user_id IS NOT NULL AND uid IS NULL AND allowed = TRUE))
 );
 
-CREATE INDEX access_logs_occurred_at_idx       ON access_logs(occurred_at DESC);
-CREATE INDEX access_logs_user_id_occurred_idx  ON access_logs(user_id, occurred_at DESC);
-CREATE INDEX access_logs_uid_occurred_idx      ON access_logs(uid, occurred_at DESC);
+CREATE INDEX access_logs_occurred_at_idx       ON access_logs(occurred_at DESC) WHERE NOT voided;
+CREATE INDEX access_logs_user_id_occurred_idx  ON access_logs(user_id, occurred_at DESC) WHERE NOT voided;
+CREATE INDEX access_logs_uid_occurred_idx      ON access_logs(uid, occurred_at DESC) WHERE uid IS NOT NULL;
 ```
 
 비고:
 - BIGSERIAL — UUID보다 시간순 정렬/페이징에 유리
-- `card_id` / `user_id` ON DELETE: SET NULL (삭제돼도 로그 보존). 단 도메인상 카드/유저는 soft delete가 원칙이라 이 경로는 사실상 안 탐
+- `card_id` / `user_id` / `created_by_user_id` ON DELETE: SET NULL (삭제돼도 로그 보존). 단 도메인상 카드/유저는 soft delete가 원칙이라 이 경로는 사실상 안 탐
+- 인덱스에 `WHERE NOT voided` 부분 인덱스 — 통계/조회는 voided 제외가 기본
+- CHECK 제약: 카드 탭은 uid 필수, 수동은 user_id 필수 + uid NULL + allowed=true 강제
 - 통계 뷰 안 만듦 — 출/퇴근 해석은 앱 레이어 ([[../domain/access-log#출퇴근-해석]])
 
 ## 트리거 / 자동화

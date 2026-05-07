@@ -157,16 +157,45 @@ JWT 검증 + 본인 정보 조회.
 
 ### Logs
 
-JWT 필요.
+JWT 필요. 쓰기 작업(POST/PATCH)은 `admin` role만 ([[../domain/user#권한]]).
 
 #### `GET /api/logs`
 출입 로그 조회. 필터/페이지네이션.
 ```
-쿼리: ?user_id=&from=&to=&allowed=&limit=50&cursor=...
+쿼리: ?user_id=&from=&to=&allowed=&include_voided=false&limit=50&cursor=...
 응답: { "items": [...], "next_cursor": "..." }
 ```
 - 정렬: `occurred_at DESC, id DESC`
 - **cursor pagination** (offset 안 씀 — 로그 누적되면 deep offset 비용 ↑). 커서 = 마지막 row의 `(occurred_at, id)` base64 인코딩
+- 기본 `voided=true` row 제외 (`include_voided=true`로 옵트인)
+- item에 `source`, `voided`, `note`, `created_by_user_id` 포함
+
+#### `POST /api/logs` ⭐ admin 전용
+수동 입력 (누락 탭 보정). [[../domain/access-log#수동-입력-admin-crud]] SSOT.
+```
+요청: { "user_id": "...", "occurred_at": "2026-04-27T13:00:00+09:00", "note"?: "..." }
+응답: 201 { "id": 123, "source": "manual", ... }
+에러: 403 admin이 아님 / 422 user_id 미존재 / 422 occurred_at 미래
+```
+서버가 자동 채움: `source='manual'`, `allowed=true`, `uid=NULL`, `card_id=NULL`, `created_by_user_id=current_user.id`, `received_at=NOW()`.
+
+#### `PATCH /api/logs/{id}` ⭐ admin 전용
+수정 / void / 복구.
+```
+요청: { "occurred_at"?: "...", "note"?: "...", "voided"?: bool }
+응답: 200 { ...수정된 row }
+에러: 403 / 404 / 422 (source='card'인데 occurred_at 수정 시도)
+```
+- `source='card'` row: `voided`와 `note`만 수정 가능 (raw 무결성). `occurred_at` 수정 시 422
+- `source='manual'` row: 모두 수정 가능
+
+#### `DELETE /api/logs/{id}` ⭐ admin 전용
+soft delete (= `voided=true`로 PATCH한 것과 동치). 편의용 별칭.
+```
+응답: 200 { "id": 123, "voided": true }
+```
+
+> 통계 쿼리는 `WHERE NOT voided`로 수동/카드 모두 동일하게 처리. `voided` 토글은 즉시 통계에 반영됨.
 
 ---
 
@@ -197,7 +226,7 @@ JWT 필요. 출/퇴근 해석 규칙은 [[../domain/access-log#출퇴근-해석]
 ]
 ```
 
-> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리. 휴게는 window function (`ROW_NUMBER` 짝/홀)으로 중간 탭 페어 묶어 차이 합산, orphan(홀수)은 퇴근시각까지로 처리.
+> 통계는 SQL로 계산 (백엔드 메모리에 끌어다 처리하지 말 것). KST 컷오프는 `(occurred_at - INTERVAL '4 hours') AT TIME ZONE 'Asia/Seoul'` 같은 식으로 처리. 모든 통계 쿼리는 `WHERE NOT voided` 필수. 휴게는 window function (`ROW_NUMBER` 짝/홀)으로 중간 탭 페어 묶어 차이 합산, orphan(홀수)은 퇴근시각까지로 처리.
 
 ---
 
