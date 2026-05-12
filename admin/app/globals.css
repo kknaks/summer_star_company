@@ -986,8 +986,8 @@ textarea {
     gap: 2px;
   }
   .bar-chart .bar {
-    flex: 1 0 10px;
-    min-width: 10px;
+    flex: 0 0 calc((100% - 12px) / 7);
+    min-width: 0;
   }
   .bar .value {
     display: none;
