@@ -599,11 +599,12 @@ textarea {
     inset -1px -1px 0 var(--win-white),
     inset 2px 2px 0 var(--win-bg-dark),
     inset -2px -2px 0 var(--win-bg-light);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .bar-chart .bar {
-  flex: 1;
+  flex: 1 0 14px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -635,6 +636,13 @@ textarea {
   box-shadow:
     inset 1px 1px 0 #ff5050,
     inset -1px -1px 0 #800000;
+}
+
+.bar .block.empty {
+  height: 2px;
+  background: var(--win-bg-darker);
+  box-shadow: none;
+  opacity: 0.4;
 }
 
 .bar .label {
@@ -978,7 +986,8 @@ textarea {
     gap: 2px;
   }
   .bar-chart .bar {
-    min-width: 8px;
+    flex: 1 0 10px;
+    min-width: 10px;
   }
   .bar .value {
     display: none;

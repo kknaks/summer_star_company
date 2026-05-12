@@ -9,9 +9,42 @@ import { listUsers } from "@/lib/api/users";
 import type { DailyStat, MonthlyStat, UserListItem } from "@/lib/types";
 
 function isWeekend(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00+09:00");
-  const dow = d.getUTCDay();
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
   return dow === 0 || dow === 6;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function buildMonthDays(
+  year: number,
+  month: number,
+  daily: DailyStat[],
+): DailyStat[] {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+  const isCurrent =
+    year === today.getFullYear() && month === today.getMonth() + 1;
+  const isFuture =
+    year > today.getFullYear() ||
+    (year === today.getFullYear() && month > today.getMonth() + 1);
+  const lastDay = isFuture ? 0 : isCurrent ? today.getDate() : daysInMonth;
+  const map = new Map(daily.map((d) => [d.date, d]));
+  const result: DailyStat[] = [];
+  for (let day = 1; day <= lastDay; day += 1) {
+    const dateStr = `${year}-${pad2(month)}-${pad2(day)}`;
+    result.push(
+      map.get(dateStr) ?? {
+        date: dateStr,
+        first_in: "",
+        last_out: "",
+        duration_minutes: 0,
+      },
+    );
+  }
+  return result;
 }
 
 export default function StatsPage() {
@@ -47,6 +80,7 @@ export default function StatsPage() {
     }
   }, [userId, view, year, month]);
 
+  const dailyAll = buildMonthDays(year, month, daily);
   const maxDur = Math.max(1, ...daily.map((d) => d.duration_minutes));
   const maxMonthDur = Math.max(
     1,
@@ -201,22 +235,28 @@ export default function StatsPage() {
         </div>
         <div className="bar-chart">
           {view === "daily"
-            ? daily.map((d) => {
-                const blocks = Math.max(
-                  1,
-                  Math.round((d.duration_minutes / maxDur) * 16),
-                );
+            ? dailyAll.map((d) => {
+                const empty = d.duration_minutes === 0;
+                const blocks = empty
+                  ? 0
+                  : Math.max(1, Math.round((d.duration_minutes / maxDur) * 16));
                 const weekend = isWeekend(d.date);
                 return (
                   <div className="bar" key={d.date}>
-                    <div className="value">{d.duration_minutes}</div>
+                    {!empty && (
+                      <div className="value">{d.duration_minutes}</div>
+                    )}
                     <div className="blocks" style={{ height: "85%" }}>
-                      {Array.from({ length: blocks }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={`block ${weekend ? "weekend" : ""}`}
-                        />
-                      ))}
+                      {empty ? (
+                        <div className="block empty" />
+                      ) : (
+                        Array.from({ length: blocks }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={`block ${weekend ? "weekend" : ""}`}
+                          />
+                        ))
+                      )}
                     </div>
                     <div className="label">{Number(d.date.slice(-2))}</div>
                   </div>
